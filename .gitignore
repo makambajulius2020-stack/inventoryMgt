@@ -1,0 +1,17 @@
+# Python
+**/.venv/
+**/__pycache__/
+*.pyc
+
+# Env files (secrets)
+**/.env
+**/.env.*
+
+# Local DB files
+**/*.db
+
+# Node
+**/node_modules/
+**/.next/
+**/dist/
+**/.turbo/
