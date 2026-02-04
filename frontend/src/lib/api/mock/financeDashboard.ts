@@ -8,7 +8,9 @@ import type {
   PaymentMethod,
   PaymentsLogRowDTO,
   PaymentsLogDTO,
+  PettyCashDirection,
   PettyCashLedgerDTO,
+  PettyCashLedgerRowDTO,
   PettyCashSummaryDTO,
 } from "@/lib/api/types";
 import { ALL_BRANCHES_LABEL, getDemoBranchPool } from "@/lib/locations";
@@ -229,9 +231,9 @@ export const mockFinanceDashboardApi: FinanceDashboardApi = {
     const expenseTypes = ["Fuel", "Supplies", "Repairs", "Staff Welfare", "Transport"] as const;
     const expenseAccounts = ["Operations", "Kitchen", "Bar", "Maintenance", "Admin"] as const;
 
-    const rows = Array.from({ length: count }).map((_, i) => {
+    const rows: PettyCashLedgerRowDTO[] = Array.from({ length: count }).map((_, i) => {
       const day = 1 + ((s + i * 3) % 28);
-      const direction = (s + i) % 4 === 0 ? "IN" : "OUT";
+      const direction: PettyCashDirection = (s + i) % 4 === 0 ? "IN" : "OUT";
       const amount = 10_000 + ((s + i * 7_000) % 85_000);
       const expenseType = expenseTypes[(s + i) % expenseTypes.length];
       const expenseAccount = expenseAccounts[(s + i * 2) % expenseAccounts.length];

@@ -163,13 +163,13 @@ export const mockInventoryDashboardApi: InventoryDashboardApi = {
         const physicalCount = hasPhysical ? Math.max(0, systemClosing + ((i % 3) - 1) * (2 + (s % 6))) : undefined;
         const variance = physicalCount !== undefined ? physicalCount - systemClosing : undefined;
         const varianceReason =
-          physicalCount !== undefined
-            ? variance === 0
+          physicalCount === undefined || variance === undefined
+            ? undefined
+            : variance === 0
               ? "Count matched system"
               : variance > 0
                 ? "Late GRN posted after count"
-                : "Unrecorded issues / wastage"
-            : undefined;
+                : "Unrecorded issues / wastage";
 
         return {
           branch,
