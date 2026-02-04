@@ -17,15 +17,29 @@ const BRANCH_CODE_TO_ID: Record<string, number> = {
   "rd-01": 5,
 };
 
+const BRANCH_MANAGER_EMAIL_TO_BRANCH_CODE: Record<string, keyof typeof BRANCH_CODE_TO_NAME> = {
+  "thepatiobela@company.com": "pb-01",
+  "themazebistro@company.com": "pb-02",
+  "themazeforestmall@company.com": "pb-03",
+  "itaru@company.com": "it-01",
+  "rosadames@company.com": "rd-01",
+};
+
 export const mockAuthApi: AuthApi = {
   async login({ email }) {
     const lower = email.toLowerCase();
     const isCeo = lower === "ceo@company.com";
 
+    const branchManagerBranchCode = BRANCH_MANAGER_EMAIL_TO_BRANCH_CODE[lower];
+
     const local = lower.split("@", 1)[0] ?? "";
     const parts = local.split(".");
-    const role = isCeo ? "CEO" : (parts[0] ?? "DEPARTMENT_STAFF").toUpperCase();
-    const branchCode = !isCeo ? (parts[1] ?? "") : "";
+    const role = isCeo
+      ? "CEO"
+      : branchManagerBranchCode
+        ? "BRANCH_MANAGER"
+        : (parts[0] ?? "DEPARTMENT_STAFF").toUpperCase();
+    const branchCode = !isCeo ? (branchManagerBranchCode ?? (parts[1] ?? "")) : "";
     const branchName = branchCode ? BRANCH_CODE_TO_NAME[branchCode] : undefined;
     const branchId = branchCode && BRANCH_CODE_TO_ID[branchCode] ? BRANCH_CODE_TO_ID[branchCode] : null;
 
