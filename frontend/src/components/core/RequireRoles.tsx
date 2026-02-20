@@ -17,14 +17,14 @@ export function RequireRoles({ roles, children }: { roles: RoleName[]; children:
       return;
     }
 
-    const allowed = roles.some((r) => state.roles.includes(r));
+    const allowed = state.roles.includes("CEO") || roles.some((r) => state.roles.includes(r));
     if (!allowed) {
       router.replace(getLandingRouteForRoles(state.roles));
     }
   }, [state.token, state.roles, roles, router]);
 
   if (!state.token) return null;
-  const allowed = roles.some((r) => state.roles.includes(r));
+  const allowed = state.roles.includes("CEO") || roles.some((r) => state.roles.includes(r));
   if (!allowed) return null;
 
   return <>{children}</>;

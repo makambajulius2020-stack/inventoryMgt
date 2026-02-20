@@ -76,12 +76,14 @@ export const mockProcurementDashboardApi: ProcurementDashboardApi = {
     const rows = Array.from({ length: count }).map((_, i) => {
       const branch = pickBranch(filters, BRANCHES[(s + i) % BRANCHES.length]);
       const department = REQ_DEPTS[(s + i * 3) % REQ_DEPTS.length];
+      const categoryId = `CAT-${String(department).toUpperCase().replaceAll(" ", "_")}`;
       const status = REQ_STATUSES[(s + i * 5) % REQ_STATUSES.length];
       const requestedAmount = 140_000 + ((s + i * 17_000) % 520_000);
       const day = 1 + ((s + i * 7) % 28);
 
       return {
         requisitionId: `REQ-${String((s + i) % 9000).padStart(4, "0")}`,
+        categoryId,
         department,
         branch,
         status,

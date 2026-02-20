@@ -1,28 +1,13 @@
-import type { LoginResponseDTO } from "@/lib/auth/types";
+import type { AuthUser, LoginResponseDTO } from "@/lib/auth/types";
 
 export type AuthState = {
   token: string | null;
-  user: LoginResponseDTO["user"] | null;
-  roles: string[];
-  allowedLocations: string[];
+  user: AuthUser | null;
+  roles: string[]; // For backward compatibility with components that check state.roles
+  allowedLocations: string[]; // For backward compatibility
 };
 
-const STORAGE_KEY = "inventory_mgt_auth";
-
-type Persisted = {
-  token: string;
-  user: LoginResponseDTO["user"];
-  roles: string[];
-  allowedLocations: string[];
-};
-
-function safeParse(json: string): Persisted | null {
-  try {
-    return JSON.parse(json) as Persisted;
-  } catch {
-    return null;
-  }
-}
+const STORAGE_KEY = "enterprise_mgmt_auth";
 
 export const authStore = {
   load(): AuthState {
@@ -33,26 +18,22 @@ export const authStore = {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return { token: null, user: null, roles: [], allowedLocations: [] };
 
-    const parsed = safeParse(raw);
-    if (!parsed?.token) return { token: null, user: null, roles: [], allowedLocations: [] };
-
-    return {
-      token: parsed.token,
-      user: parsed.user,
-      roles: parsed.roles ?? [],
-      allowedLocations: parsed.allowedLocations ?? [],
-    };
+    try {
+      const parsed = JSON.parse(raw) as LoginResponseDTO;
+      return {
+        token: parsed.token,
+        user: parsed.user,
+        roles: parsed.user ? [parsed.user.role] : [],
+        allowedLocations: parsed.user?.scope.allLocations ? ["ALL"] : (parsed.user?.scope.locationId ? [parsed.user.scope.locationId] : []),
+      };
+    } catch {
+      return { token: null, user: null, roles: [], allowedLocations: [] };
+    }
   },
 
   save(session: LoginResponseDTO) {
     if (typeof window === "undefined") return;
-    const persisted: Persisted = {
-      token: session.token,
-      user: session.user,
-      roles: session.roles,
-      allowedLocations: session.allowedLocations,
-    };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   },
 
   clear() {

@@ -1,331 +1,160 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-
-import { GlobalFilterBar } from "@/components/core/GlobalFilterBar";
-import { KpiCard } from "@/components/core/KpiCard";
-import { PaginatedDataTable } from "@/components/core/PaginatedDataTable";
-import { PortalSidebar } from "@/components/core/PortalSidebar";
-import { RequireAuth } from "@/components/core/RequireAuth";
+import React, { useEffect, useState } from "react";
+import {
+  ShoppingCart,
+  Users,
+  Package,
+  PlusCircle,
+  TrendingUp,
+  FileCheck
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/core/StatusBadge";
+import { api } from "@/lib/api/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getApiClient } from "@/lib/api/client";
-import type {
-  DashboardFilters,
-  LpoStatus,
-  ProcurementAdjustmentsAuditRowDTO,
-  ProcurementLpoRowDTO,
-  ProcurementRequisitionRowDTO,
-  ProcurementVendorBalanceRowDTO,
-  ProcurementWatchlistGrnRowDTO,
-  ProcurementWatchlistInvoiceRowDTO,
-} from "@/lib/api/types";
+import type { ProcurementKPIs, RequisitionRow, VendorRow } from "@/lib/api/services/procurement.service";
 
-function toneForReqStatus(s: string): "neutral" | "good" | "warn" | "bad" {
-  if (s === "Approved") return "good";
-  if (s === "Pending") return "warn";
-  if (s === "Rejected") return "bad";
-  return "neutral";
-}
-
-export default function ProcurementDashboardPage() {
-  const api = useMemo(() => getApiClient(), []);
+export default function ProcurementDashboard() {
   const { state } = useAuth();
-
-  const initialLocation = state.allowedLocations?.[0] || "All Branches";
-
-  const [filters, setFilters] = useState<DashboardFilters>({
-    preset: "month",
-    location: initialLocation,
-  });
-
-  const [lpoStatus, setLpoStatus] = useState<LpoStatus | undefined>(undefined);
-
-  const [loading, setLoading] = useState(false);
-  const [kpis, setKpis] = useState<{
-    totalRequisitions: string;
-    pendingApprovals: string;
-    activeLpos: string;
-    grnsAwaitingFinance: string;
-    invoicesWithDiscrepancies: string;
-  } | null>(null);
-  const [reqRows, setReqRows] = useState<ProcurementRequisitionRowDTO[]>([]);
-  const [lpoSummary, setLpoSummary] = useState<Record<LpoStatus, number> | null>(null);
-  const [lpoRows, setLpoRows] = useState<ProcurementLpoRowDTO[]>([]);
-  const [grnRows, setGrnRows] = useState<ProcurementWatchlistGrnRowDTO[]>([]);
-  const [invoiceRows, setInvoiceRows] = useState<ProcurementWatchlistInvoiceRowDTO[]>([]);
-  const [vendorRows, setVendorRows] = useState<ProcurementVendorBalanceRowDTO[]>([]);
-  const [auditOpen, setAuditOpen] = useState(false);
-  const [auditRows, setAuditRows] = useState<ProcurementAdjustmentsAuditRowDTO[]>([]);
-  const [auditVendor, setAuditVendor] = useState<string | undefined>(undefined);
+  const [kpis, setKpis] = useState<ProcurementKPIs | null>(null);
+  const [reqs, setReqs] = useState<RequisitionRow[]>([]);
+  const [vendors, setVendors] = useState<VendorRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!state.allowedLocations?.length) return;
-    if (filters.location) return;
-    setFilters((f) => ({ ...f, location: state.allowedLocations[0] }));
-  }, [state.allowedLocations, filters.location]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      setLoading(true);
-      try {
-        const [k, r, s, l, g, inv, vb] = await Promise.all([
-          api.procurementDashboard.getKpis(filters),
-          api.procurementDashboard.getRequisitionFlow(filters),
-          api.procurementDashboard.getLpoStatusSummary(filters),
-          api.procurementDashboard.getLpos(filters, { status: lpoStatus }),
-          api.procurementDashboard.getGrnsAwaitingFinance(filters),
-          api.procurementDashboard.getInvoicesWithDiscrepancies(filters),
-          api.procurementDashboard.getVendorBalances(filters),
-        ]);
-        if (cancelled) return;
-
-        setKpis({
-          totalRequisitions: k.kpis.totalRequisitions.display,
-          pendingApprovals: k.kpis.pendingApprovals.display,
-          activeLpos: k.kpis.activeLpos.display,
-          grnsAwaitingFinance: k.kpis.grnsAwaitingFinance.display,
-          invoicesWithDiscrepancies: k.kpis.invoicesWithDiscrepancies.display,
-        });
-        setReqRows(r.rows);
-        setLpoSummary(s.summary);
-        setLpoRows(l.rows);
-        setGrnRows(g.rows);
-        setInvoiceRows(inv.rows);
-        setVendorRows(vb.rows);
-      } finally {
-        if (!cancelled) setLoading(false);
+    async function load() {
+      if (state.user) {
+        try {
+          const [k, r, v] = await Promise.all([
+            api.procurement.getKPIs(state.user),
+            api.procurement.getRequisitions(state.user),
+            api.procurement.getVendors(),
+          ]);
+          setKpis(k);
+          setReqs(r);
+          setVendors(v);
+        } finally {
+          setLoading(false);
+        }
       }
     }
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [api, filters, lpoStatus]);
+    load();
+  }, [state.user]);
+
+  if (loading || !kpis) {
+    return <div className="p-8 animate-pulse space-y-8">
+      <div className="h-12 w-48 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+      <div className="grid grid-cols-4 gap-6">
+        {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-slate-200 dark:bg-slate-800 rounded-3xl" />)}
+      </div>
+    </div>;
+  }
 
   return (
-    <RequireAuth>
-      <div className="min-h-screen bg-zinc-50">
-        <GlobalFilterBar
-          filters={filters}
-          locations={state.allowedLocations?.length ? state.allowedLocations : ["All Branches"]}
-          onChange={(next) => {
-            setFilters(next);
-            setLpoStatus(undefined);
-          }}
-        />
-
-        <div className="mx-auto flex max-w-7xl">
-          <PortalSidebar />
-
-          <main className="w-full px-6 py-8">
-            <div className="flex items-start justify-between gap-6">
-              <div>
-                <h1 className="text-2xl font-semibold text-zinc-900">Procurement (Super Admin View)</h1>
-              </div>
-              {loading ? <div className="text-xs text-zinc-500">Refreshing…</div> : null}
-            </div>
-
-            <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              <KpiCard title="Total Requisitions" value={kpis?.totalRequisitions ?? "—"} />
-              <KpiCard title="Pending Approvals" value={kpis?.pendingApprovals ?? "—"} tone="warn" />
-              <KpiCard title="Active LPOs" value={kpis?.activeLpos ?? "—"} />
-              <KpiCard title="GRNs Awaiting Finance" value={kpis?.grnsAwaitingFinance ?? "—"} tone="warn" />
-              <KpiCard title="Invoices w/ Discrepancies" value={kpis?.invoicesWithDiscrepancies ?? "—"} tone="warn" />
-            </section>
-
-            <section className="mt-6">
-              <PaginatedDataTable
-                title="Requisition Flow"
-                rows={reqRows}
-                columns={[
-                  { key: "requisitionId", header: "Requisition ID", render: (r) => r.requisitionId },
-                  { key: "department", header: "Department", render: (r) => r.department },
-                  { key: "branch", header: "Branch", render: (r) => r.branch },
-                  {
-                    key: "status",
-                    header: "Status",
-                    render: (r) => <StatusBadge label={r.status} tone={toneForReqStatus(r.status)} />,
-                  },
-                  { key: "requestedAmount", header: "Requested Amount", render: (r) => r.requestedAmountDisplay, className: "text-right" },
-                  { key: "date", header: "Date", render: (r) => r.date },
-                ]}
-              />
-            </section>
-
-            <section className="mt-8 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-zinc-900">LPO Status Overview</div>
-                  <button
-                    type="button"
-                    className="text-xs font-medium text-zinc-700 hover:underline"
-                    onClick={() => setLpoStatus(undefined)}
-                  >
-                    Clear
-                  </button>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {(["Issued", "Partial", "Completed", "Cancelled"] as LpoStatus[]).map((s) => {
-                    const active = lpoStatus === s;
-                    const v = lpoSummary?.[s];
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setLpoStatus((cur) => (cur === s ? undefined : s))}
-                        className={`rounded-lg border p-3 text-left ${
-                          active ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white hover:bg-zinc-50"
-                        }`}
-                      >
-                        <div className={`text-xs font-medium ${active ? "text-zinc-200" : "text-zinc-500"}`}>{s}</div>
-                        <div className={`mt-2 text-2xl font-semibold ${active ? "text-white" : "text-zinc-900"}`}>{v ?? "—"}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <PaginatedDataTable
-                title={`LPOs${lpoStatus ? ` (${lpoStatus})` : ""}`}
-                rows={lpoRows}
-                columns={[
-                  { key: "lpoId", header: "LPO ID", render: (r) => r.lpoId },
-                  { key: "vendor", header: "Vendor", render: (r) => r.vendor },
-                  { key: "branch", header: "Branch", render: (r) => r.branch },
-                  { key: "status", header: "Status", render: (r) => <StatusBadge label={r.status} /> },
-                  { key: "amount", header: "Amount", render: (r) => r.amountDisplay, className: "text-right" },
-                  { key: "date", header: "Date", render: (r) => r.date },
-                ]}
-                pageSize={6}
-              />
-            </section>
-
-            <section className="mt-6 grid gap-4 lg:grid-cols-2">
-              <PaginatedDataTable
-                title="Vendor Balances (System + Migrated Opening)"
-                rows={vendorRows}
-                columns={[
-                  { key: "vendor", header: "Vendor", render: (r) => r.vendor },
-                  { key: "branchScope", header: "Scope", render: (r) => r.branchScope },
-                  { key: "totalReceived", header: "Total Received", render: (r) => r.totalReceivedDisplay, className: "text-right" },
-                  { key: "totalPaid", header: "Total Paid", render: (r) => r.totalPaidDisplay, className: "text-right" },
-                  { key: "migratedOpeningBalance", header: "Migrated Opening", render: (r) => r.migratedOpeningBalanceDisplay, className: "text-right" },
-                  { key: "outstanding", header: "Outstanding", render: (r) => r.outstandingDisplay, className: "text-right" },
-                  {
-                    key: "adjustments",
-                    header: "Audit",
-                    render: (r) =>
-                      r.hasManualAdjustments ? (
-                        <button
-                          className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-700"
-                          onClick={async () => {
-                            const res = await api.procurementDashboard.getAdjustmentsAudit(filters, { vendor: r.vendor });
-                            setAuditRows(res.rows);
-                            setAuditVendor(r.vendor);
-                            setAuditOpen(true);
-                          }}
-                        >
-                          View Adjustments
-                        </button>
-                      ) : (
-                        <span className="text-xs text-zinc-500">—</span>
-                      ),
-                  },
-                ]}
-                pageSize={6}
-              />
-
-              <PaginatedDataTable
-                title="GRNs Awaiting Finance Confirmation"
-                rows={grnRows}
-                columns={[
-                  { key: "grnId", header: "GRN ID", render: (r) => r.grnId },
-                  { key: "lpoId", header: "LPO ID", render: (r) => r.lpoId },
-                  { key: "vendor", header: "Vendor", render: (r) => r.vendor },
-                  { key: "branch", header: "Branch", render: (r) => r.branch },
-                  { key: "value", header: "Value", render: (r) => r.valueDisplay, className: "text-right" },
-                  { key: "date", header: "Date", render: (r) => r.date },
-                ]}
-                pageSize={6}
-              />
-            </section>
-
-            <section className="mt-6">
-              <PaginatedDataTable
-                title="Invoices with Mismatches (3-way Match Failures)"
-                rows={invoiceRows}
-                columns={[
-                  { key: "invoiceNumber", header: "Invoice #", render: (r) => r.invoiceNumber },
-                  { key: "grnId", header: "GRN", render: (r) => r.grnId },
-                  { key: "lpoId", header: "LPO", render: (r) => r.lpoId },
-                  { key: "vendor", header: "Vendor", render: (r) => r.vendor },
-                  { key: "branch", header: "Branch", render: (r) => r.branch },
-                  { key: "issue", header: "Issue", render: (r) => r.issue },
-                  { key: "amount", header: "Amount", render: (r) => r.amountDisplay, className: "text-right" },
-                  { key: "date", header: "Date", render: (r) => r.date },
-                ]}
-                pageSize={8}
-              />
-            </section>
-          </main>
+    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-[#001F3F] dark:text-white tracking-tighter uppercase">Procurement Hub</h1>
+          <p className="text-slate-500 font-medium">Supply chain and vendor lifecycle management</p>
         </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm">
+            <Users className="w-4 h-4 mr-2" /> Manage Vendors
+          </Button>
+          <Button size="sm">
+            <PlusCircle className="w-4 h-4 mr-2" /> Release LPO
+          </Button>
+        </div>
+      </div>
 
-        {auditOpen ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/30">
-            <div className="h-full w-full max-w-2xl overflow-y-auto bg-white p-4 shadow-xl">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold text-zinc-900">Adjustments Audit</div>
-                <button className="text-sm text-zinc-500" onClick={() => setAuditOpen(false)}>
-                  Close
-                </button>
+      {/* Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <ProcMetric label="Active Requests" value={kpis.activeRequisitions} icon={ShoppingCart} tone="info" />
+        <ProcMetric label="Open LPOs" value={kpis.openLPOs} icon={FileCheck} tone="good" />
+        <ProcMetric label="Awaiting GRN" value={kpis.pendingGRNs} icon={Package} tone="warn" />
+        <ProcMetric label="Strategic Vendors" value={kpis.vendorCount} icon={Users} tone="primary" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Requisition Flow */}
+        <Card title="Pending Fulfillment" className="lg:col-span-2" noPadding>
+          <DataTable
+            data={reqs}
+            columns={[
+              { header: "REQ ID", accessor: "id", className: "font-mono font-bold" },
+              { header: "Dept", accessor: "departmentName", className: "font-bold text-[#001F3F] dark:text-teal-400" },
+              {
+                header: "Value",
+                accessor: (r: RequisitionRow) => `UGX ${r.totalAmount.toLocaleString()}`,
+                className: "font-black"
+              },
+              { header: "Status", accessor: (r: RequisitionRow) => <StatusBadge label={r.status} tone={r.status === "SUBMITTED" ? "warn" : "good"} /> },
+              {
+                header: "Items",
+                accessor: (r: RequisitionRow) => (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold">{r.itemCount} SKUs</span>
+                  </div>
+                )
+              }
+            ]}
+          />
+        </Card>
+
+        {/* Vendor Scoring */}
+        <Card title="Vendor Performance" subtitle="Based on rating and item coverage">
+          <div className="space-y-6 mt-6">
+            {vendors.slice(0, 5).map(v => (
+              <div key={v.id} className="space-y-2">
+                <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest">
+                  <span className="text-slate-500">{v.name}</span>
+                  <span className="text-teal-600">{(v.rating * 20).toFixed(0)}%</span>
+                </div>
+                <div className="h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#001F3F] dark:bg-teal-500 rounded-full transition-all duration-1000"
+                    style={{ width: `${v.rating * 20}%` }}
+                  />
+                </div>
               </div>
-
-              <div className="mt-2 text-sm text-zinc-700">Vendor: {auditVendor ?? "All"}</div>
-
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full border-separate border-spacing-0">
-                  <thead>
-                    <tr>
-                      {["When", "Vendor", "Branch", "Amount", "Reason", "By"].map((h) => (
-                        <th
-                          key={h}
-                          className="whitespace-nowrap border-b border-zinc-200 px-3 py-2 text-left text-xs font-medium text-zinc-500"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditRows.map((r) => (
-                      <tr key={r.id} className="hover:bg-zinc-50">
-                        <td className="border-b border-zinc-100 px-3 py-2 text-sm text-zinc-800">
-                          {new Date(r.at).toLocaleString()}
-                        </td>
-                        <td className="border-b border-zinc-100 px-3 py-2 text-sm text-zinc-800">{r.vendor}</td>
-                        <td className="border-b border-zinc-100 px-3 py-2 text-sm text-zinc-800">{r.branch}</td>
-                        <td className="border-b border-zinc-100 px-3 py-2 text-sm text-zinc-800 text-right">{r.amountDisplay}</td>
-                        <td className="border-b border-zinc-100 px-3 py-2 text-sm text-zinc-800">{r.reason}</td>
-                        <td className="border-b border-zinc-100 px-3 py-2 text-sm text-zinc-800">{r.actorName}</td>
-                      </tr>
-                    ))}
-                    {auditRows.length === 0 ? (
-                      <tr>
-                        <td className="px-3 py-10 text-center text-sm text-zinc-500" colSpan={6}>
-                          No data for selected filters
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
+            ))}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-[#001F3F] dark:text-teal-400">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-[10px] font-black uppercase tracking-widest">{vendors.length} Active Vendors</span>
               </div>
             </div>
           </div>
-        ) : null}
+        </Card>
       </div>
-    </RequireAuth>
+    </div>
+  );
+}
+
+function ProcMetric({ label, value, icon: Icon, tone }: { label: string; value: number | string; icon: React.ComponentType<{ className?: string }>; tone: "info" | "good" | "warn" | "primary" }) {
+  const tones = {
+    info: "bg-sky-50 text-sky-600 border-sky-100",
+    good: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    warn: "bg-amber-50 text-amber-600 border-amber-100",
+    primary: "bg-slate-50 text-[#001F3F] border-slate-200",
+  };
+
+  return (
+    <Card className="hover:shadow-md transition-all">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+          <p className="text-3xl font-black text-[#001F3F] dark:text-white tracking-tighter">{value}</p>
+        </div>
+        <div className={cn("p-2.5 rounded-2xl border", tones[tone as keyof typeof tones])}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+    </Card>
   );
 }

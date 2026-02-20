@@ -1,14 +1,12 @@
 import type { AuthApi } from "@/lib/api/types";
-import type { LoginResponseDTO } from "@/lib/auth/types";
-import { DEMO_LOCATIONS } from "@/lib/locations";
+import type { AuthUser, LoginResponseDTO, RoleName } from "@/lib/auth/types";
 import { getBaseUrl } from "./baseUrl";
 
-const BRANCH_ID_TO_NAME: Record<number, string> = {
-  1: "The Patiobela",
-  2: "The Maze Bistro",
-  3: "The Maze Forest Mall",
-  4: "Itaru",
-  5: "Rosa Dames",
+type BackendUserContext = {
+  userId: string;
+  role: string;
+  branchId: string | null;
+  departmentId?: string | null;
 };
 
 export const realAuthApi: AuthApi = {
@@ -38,12 +36,7 @@ export const realAuthApi: AuthApi = {
       token_type: string;
       access_token_expires_at: string;
       refresh_token_expires_at: string;
-      userContext?: {
-        userId: number;
-        role: string;
-        branchId: number | null;
-        departmentId?: number | null;
-      };
+      userContext?: BackendUserContext;
     };
 
     const accessToken = tokenPair.access_token;
@@ -59,26 +52,24 @@ export const realAuthApi: AuthApi = {
         const msg = await meRes.text().catch(() => "");
         throw new Error(msg || "Failed to fetch user context");
       }
-      userContext = (await meRes.json()) as LoginResponseDTO["userContext"];
+      userContext = (await meRes.json()) as BackendUserContext;
     }
 
-    const role = userContext?.role ? [userContext.role] : [];
+    const roleName = (userContext?.role ?? "STORE_MANAGER") as RoleName;
+    const isGlobal = roleName === "CEO" || roleName === "SYSTEM_AUDITOR";
 
-    const branchName =
-      userContext?.branchId != null ? BRANCH_ID_TO_NAME[Number(userContext.branchId)] : undefined;
-
-    const allowedLocations = role.includes("CEO") ? [...DEMO_LOCATIONS] : branchName ? [branchName] : [];
-
-    return {
-      user: {
-        id: String(userContext?.userId ?? ""),
-        name: email,
-        email,
+    const user: AuthUser = {
+      id: String(userContext?.userId ?? ""),
+      name: email,
+      email,
+      role: roleName,
+      scope: {
+        allLocations: isGlobal,
+        locationId: userContext?.branchId ?? undefined,
+        departmentId: userContext?.departmentId ?? undefined,
       },
-      roles: role,
-      allowedLocations,
-      token: accessToken,
-      userContext: userContext ?? undefined,
     };
+
+    return { user, token: accessToken };
   },
 };

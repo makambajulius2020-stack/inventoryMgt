@@ -112,7 +112,7 @@ export type ProcurementRequisitionStatus = "Pending" | "Approved" | "Rejected";
 
 export type ProcurementRequisitionRowDTO = {
   requisitionId: string;
-  department: string;
+  categoryId: string;
   branch: string;
   status: ProcurementRequisitionStatus;
   requestedAmount: number;
@@ -293,7 +293,6 @@ export type InventoryMovementLedgerRowDTO = {
   item: string;
   kind: InventoryLedgerMovementKind;
   quantity: number;
-  dept?: string; // required only when kind === "ISSUED"
   sourceDocument?: string;
   reason?: string; // used mainly for ADJUSTMENT, or variance explanations if needed
 };
@@ -441,43 +440,6 @@ export type PettyCashSummaryDTO = {
   rows: PettyCashSummaryRowDTO[];
 };
 
-export type DepartmentSpendRowDTO = {
-  department: string;
-  branch: string;
-  requisitionsCount: number;
-  approvedSpend: number;
-  approvedSpendDisplay: string;
-  actualSpend: number;
-  actualSpendDisplay: string;
-  variancePct: number;
-};
-
-export type DepartmentSpendSummaryDTO = {
-  filters: DashboardFilters;
-  departmentFilter?: string;
-  rows: DepartmentSpendRowDTO[];
-};
-
-export type DepartmentActivityRowDTO = {
-  department: string;
-  branch: string;
-  action: string;
-  amount: number;
-  amountDisplay: string;
-  date: string; // ISO date
-  status: string;
-};
-
-export type DepartmentActivityFeedDTO = {
-  filters: DashboardFilters;
-  departmentFilter?: string;
-  rows: DepartmentActivityRowDTO[];
-};
-
-export type DepartmentDashboardApi = {
-  getSpendSummary(filters: DashboardFilters, params?: { department?: string }): Promise<DepartmentSpendSummaryDTO>;
-  getActivityFeed(filters: DashboardFilters, params?: { department?: string }): Promise<DepartmentActivityFeedDTO>;
-};
 
 export type UserStatus = "ACTIVE" | "SUSPENDED";
 
@@ -488,7 +450,6 @@ export type AdminUserDTO = {
   phone?: string;
   role: RoleName;
   branch?: string;
-  department?: string;
   status: UserStatus;
   lastLogin?: string; // ISO date-time
 };
@@ -509,7 +470,6 @@ export type AdminUsersListDTO = {
 export type AdminUsersFilters = {
   branch?: string;
   role?: RoleName;
-  department?: string;
   status?: UserStatus;
 };
 
@@ -519,7 +479,6 @@ export type CreateAdminUserInput = {
   phone?: string;
   role: RoleName;
   branch?: string;
-  department?: string;
   status: UserStatus;
 };
 

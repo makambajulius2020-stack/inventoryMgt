@@ -14,15 +14,25 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>(() => authStore.load());
+  const [state, setState] = useState<AuthState>({
+    token: null,
+    user: null,
+    roles: [],
+    allowedLocations: [],
+  });
+
+  // Load from localStorage on mount
+  React.useEffect(() => {
+    setState(authStore.load());
+  }, []);
 
   const login = useCallback((session: LoginResponseDTO) => {
     authStore.save(session);
     setState({
       token: session.token,
       user: session.user,
-      roles: session.roles,
-      allowedLocations: session.allowedLocations,
+      roles: [session.user.role],
+      allowedLocations: session.user.scope.allLocations ? ["ALL"] : (session.user.scope.locationId ? [session.user.scope.locationId] : []),
     });
   }, []);
 

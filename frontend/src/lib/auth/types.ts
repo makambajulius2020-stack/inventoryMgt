@@ -1,27 +1,27 @@
-export type UserDTO = {
+export type RoleName =
+  | "CEO"
+  | "SYSTEM_AUDITOR"
+  | "GENERAL_MANAGER"
+  | "DEPARTMENT_HEAD"
+  | "PROCUREMENT_OFFICER"
+  | "STORE_MANAGER"
+  | "FINANCE_MANAGER";
+
+export type UserScope = {
+  allLocations: boolean;
+  locationId?: string;
+  departmentId?: string;
+};
+
+export type AuthUser = {
   id: string;
   name: string;
   email: string;
+  role: RoleName;
+  scope: UserScope;
 };
 
 export type LoginResponseDTO = {
-  user: UserDTO;
-  roles: string[];
-  allowedLocations: string[];
+  user: AuthUser;
   token: string;
-  userContext?: {
-    userId: number;
-    role: string;
-    branchId: number | null;
-    departmentId?: number | null;
-  };
 };
-
-export type RoleName =
-  | "CEO"
-  | "BRANCH_MANAGER"
-  | "PROCUREMENT_HEAD"
-  | "STORE_MANAGER"
-  | "FINANCE"
-  | "DEPARTMENT_HEAD"
-  | "DEPARTMENT_STAFF";

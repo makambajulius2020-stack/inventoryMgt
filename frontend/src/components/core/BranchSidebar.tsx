@@ -6,23 +6,28 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 const LINKS = [
-  { href: "/branch/dashboard", label: "Dashboard" },
-  { href: "/branch/inventory", label: "Inventory" },
-  { href: "/branch/petty-cash", label: "Petty Cash" },
-  { href: "/branch/grns", label: "GRNs" },
-  { href: "/branch/invoices", label: "Invoices & AP" },
-  { href: "/branch/reports", label: "Reports" },
+  { href: "/gm/dashboard", label: "Dashboard" },
+  { href: "/gm/inventory", label: "Inventory" },
+  { href: "/gm/finance", label: "Finance" },
 ];
 
 export function BranchSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { state, logout } = useAuth();
+
+  const assignedBranchLabel = state.allowedLocations?.[0] ?? "—";
 
   return (
     <aside className="sticky top-0 block h-auto w-full shrink-0 overflow-y-auto border-b border-zinc-200 bg-white lg:h-screen lg:w-64 lg:border-b-0 lg:border-r">
       <div className="px-4 py-4">
-        <div className="text-xs font-semibold tracking-wide text-zinc-500">BRANCH PORTAL</div>
+        <div className="text-xs font-semibold tracking-wide text-zinc-500">GM PORTAL</div>
+
+        <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+          <div className="text-[11px] font-semibold tracking-wide text-zinc-500">ASSIGNED LOCATION</div>
+          <div className="mt-1 text-sm font-medium text-zinc-900">{assignedBranchLabel}</div>
+        </div>
+
         <nav className="mt-3 space-y-1">
           {LINKS.map((l) => {
             const active = pathname === l.href;

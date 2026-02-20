@@ -1,63 +1,88 @@
 import type { AuthApi } from "@/lib/api/types";
-import { DEMO_LOCATIONS, type DemoLocation } from "@/lib/locations";
+import { Role } from "@/lib/auth/roles";
+import type { AuthUser } from "@/lib/auth/types";
 
-const BRANCH_CODE_TO_NAME: Record<string, DemoLocation> = {
+const BRANCH_CODE_TO_NAME: Record<string, string> = {
   "pb-01": "The Patiobela",
-  "pb-02": "The Maze Bistro",
-  "pb-03": "The Maze Forest Mall",
-  "it-01": "Itaru",
-  "rd-01": "Rosa Dames",
+  "pb-02": "The Maze Kololo",
+  "er-01": "Eateroo",
 };
 
-const BRANCH_CODE_TO_ID: Record<string, number> = {
-  "pb-01": 1,
-  "pb-02": 2,
-  "pb-03": 3,
-  "it-01": 4,
-  "rd-01": 5,
-};
-
-const BRANCH_MANAGER_EMAIL_TO_BRANCH_CODE: Record<string, keyof typeof BRANCH_CODE_TO_NAME> = {
-  "thepatiobela@company.com": "pb-01",
-  "themazebistro@company.com": "pb-02",
-  "themazeforestmall@company.com": "pb-03",
-  "itaru@company.com": "it-01",
-  "rosadames@company.com": "rd-01",
+const BRANCH_CODE_TO_ID: Record<string, string> = {
+  "pb-01": "BR-001",
+  "pb-02": "BR-002",
+  "er-01": "BR-003",
 };
 
 export const mockAuthApi: AuthApi = {
   async login({ email }) {
     const lower = email.toLowerCase();
-    const isCeo = lower === "ceo@company.com";
 
-    const branchManagerBranchCode = BRANCH_MANAGER_EMAIL_TO_BRANCH_CODE[lower];
-
-    const local = lower.split("@", 1)[0] ?? "";
-    const parts = local.split(".");
-    const role = isCeo
-      ? "CEO"
-      : branchManagerBranchCode
-        ? "BRANCH_MANAGER"
-        : (parts[0] ?? "DEPARTMENT_STAFF").toUpperCase();
-    const branchCode = !isCeo ? (branchManagerBranchCode ?? (parts[1] ?? "")) : "";
-    const branchName = branchCode ? BRANCH_CODE_TO_NAME[branchCode] : undefined;
-    const branchId = branchCode && BRANCH_CODE_TO_ID[branchCode] ? BRANCH_CODE_TO_ID[branchCode] : null;
-
-    return {
-      user: {
-        id: "u_1",
-        name: isCeo ? "CEO User" : "Demo User",
+    // CEO — global scope
+    if (lower === "ceo@company.com") {
+      const user: AuthUser = {
+        id: "u_ceo",
+        name: "CEO",
         email,
-      },
-      roles: [role],
-      allowedLocations: role === "CEO" ? [...DEMO_LOCATIONS] : branchName ? ([branchName] as DemoLocation[]) : [],
-      token: "mock.jwt.token",
-      userContext: {
-        userId: 1,
-        role,
-        branchId,
-        departmentId: role === "DEPARTMENT_HEAD" || role === "DEPARTMENT_STAFF" ? 1 : null,
+        role: Role.CEO,
+        scope: { allLocations: true },
+      };
+      return { user, token: "mock.jwt.ceo" };
+    }
+
+    // System Auditor — global scope, hard read-only
+    if (lower === "auditor@company.com") {
+      const user: AuthUser = {
+        id: "u_auditor",
+        name: "System Auditor",
+        email,
+        role: Role.SYSTEM_AUDITOR,
+        scope: { allLocations: true },
+      };
+      return { user, token: "mock.jwt.auditor" };
+    }
+
+    // Role.BranchCode@company.com format (management roles only)
+    const [userPart] = lower.split("@");
+    if (!userPart) throw new Error("Invalid email");
+
+    const parts = userPart.split(".");
+    const roleSlug = parts[0];
+    const branchCode = parts[1];
+
+    const roleMap: Record<string, Role> = {
+      gm: Role.GENERAL_MANAGER,
+      finance: Role.FINANCE_MANAGER,
+      procurement: Role.PROCUREMENT_OFFICER,
+      store: Role.STORE_MANAGER,
+      department_head: Role.DEPARTMENT_HEAD,
+    };
+
+    const role = (roleSlug && roleMap[roleSlug]) || Role.STORE_MANAGER;
+    const branchName = branchCode ? BRANCH_CODE_TO_NAME[branchCode] : undefined;
+    const branchId = branchCode ? BRANCH_CODE_TO_ID[branchCode] : null;
+
+    if (!branchName && !isCeoEmail(lower)) {
+      // Fallback for some legacy test accounts if any
+    }
+
+    const user: AuthUser = {
+      id: `u_${userPart}`,
+      name: `${roleSlug?.replace("_", " ")} ${branchCode || ""}`.trim(),
+      email,
+      role,
+      scope: {
+        allLocations: false,
+        locationId: branchId ?? undefined,
+        departmentId: undefined,
       },
     };
+
+    return { user, token: `mock.jwt.${userPart}` };
   },
 };
+
+function isCeoEmail(email: string) {
+  return email.toLowerCase() === "ceo@company.com";
+}
+

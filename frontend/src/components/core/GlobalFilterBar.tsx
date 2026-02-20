@@ -1,16 +1,18 @@
 "use client";
 
 import type { DashboardFilters, DateRangePreset } from "@/lib/api/types";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+import { Calendar, MapPin } from "lucide-react";
 
 const PRESETS: { key: DateRangePreset; label: string }[] = [
   { key: "today", label: "Today" },
   { key: "week", label: "Week" },
   { key: "month", label: "Month" },
   { key: "quarter", label: "Quarter" },
-  { key: "q2", label: "2nd Quarter" },
-  { key: "q3", label: "3rd Quarter" },
-  { key: "q4", label: "4th Quarter" },
+  { key: "q2", label: "Q2" },
+  { key: "q3", label: "Q3" },
+  { key: "q4", label: "Q4" },
   { key: "year", label: "Year" },
   { key: "custom", label: "Custom" },
 ];
@@ -81,10 +83,18 @@ export function GlobalFilterBar({ filters, locations, onChange, hideLocation = f
     return [start, start + 1, start + 2];
   }, [qIndex]);
 
-  function setRangeIfChanged(nextFrom: string | undefined, nextTo: string | undefined) {
+  const safeQuarterMonth = useMemo<number | "">(() => {
+    if (filters.preset === "quarter" || filters.preset === "q2" || filters.preset === "q3" || filters.preset === "q4") {
+      if (quarterMonth === "") return "";
+      return quarterMonths.includes(quarterMonth) ? quarterMonth : "";
+    }
+    return "";
+  }, [filters.preset, quarterMonth, quarterMonths]);
+
+  const setRangeIfChanged = useCallback((nextFrom: string | undefined, nextTo: string | undefined) => {
     if (filters.fromDate === nextFrom && filters.toDate === nextTo) return;
     onChange({ ...filters, fromDate: nextFrom, toDate: nextTo });
-  }
+  }, [filters, onChange]);
 
   useEffect(() => {
     if (filters.preset === "custom") return;
@@ -109,13 +119,13 @@ export function GlobalFilterBar({ filters, locations, onChange, hideLocation = f
     }
 
     if (filters.preset === "quarter" || filters.preset === "q2" || filters.preset === "q3" || filters.preset === "q4") {
-      if (quarterMonth === "") {
+      if (safeQuarterMonth === "") {
         const r = quarterStartEnd(year, qIndex);
         setRangeIfChanged(r.from, r.to);
         return;
       }
 
-      const r = monthStartEnd(year, quarterMonth);
+      const r = monthStartEnd(year, safeQuarterMonth);
       setRangeIfChanged(r.from, r.to);
       return;
     }
@@ -124,33 +134,28 @@ export function GlobalFilterBar({ filters, locations, onChange, hideLocation = f
       const r = { from: `${year}-01-01`, to: `${year}-12-31` };
       setRangeIfChanged(r.from, r.to);
     }
-  }, [filters, month, onChange, qIndex, quarterMonth, week, year]);
-
-  useEffect(() => {
-    if (filters.preset === "quarter" || filters.preset === "q2" || filters.preset === "q3" || filters.preset === "q4") {
-      if (quarterMonth !== "" && !quarterMonths.includes(quarterMonth)) {
-        setQuarterMonth("");
-      }
-    } else {
-      if (quarterMonth !== "") setQuarterMonth("");
-    }
-  }, [filters.preset, quarterMonth, quarterMonths]);
+  }, [filters.preset, filters.fromDate, filters.toDate, month, qIndex, safeQuarterMonth, setRangeIfChanged, week, year]);
 
   return (
-    <div className="sticky top-0 z-50 border-b border-zinc-200 bg-white/90 shadow-sm backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-6 py-2">
-        <div className="text-sm font-semibold text-zinc-900">Global Filters</div>
+    <div className="sticky top-0 z-[40] border-b border-white/10 bg-brand-bg/80 backdrop-blur-xl shadow-premium">
+      <div className="mx-auto flex flex-col md:flex-row items-center gap-4 px-6 py-4">
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 pr-4 border-r border-white/10">
+          <Calendar className="w-4 h-4 text-brand-accent" />
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Periodic View</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/5">
           {PRESETS.map((p) => (
             <button
               key={p.key}
               type="button"
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+              className={cn(
+                "rounded-xl px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all",
                 filters.preset === p.key
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-              }`}
+                  ? "bg-brand-accent text-white shadow-lg shadow-brand-accent/20"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              )}
               onClick={() =>
                 onChange({
                   ...filters,
@@ -164,65 +169,39 @@ export function GlobalFilterBar({ filters, locations, onChange, hideLocation = f
           ))}
         </div>
 
-        {filters.preset !== "custom" ? (
-          <div className="flex w-full flex-wrap items-center gap-2">
-            {filters.preset === "today" ? (
-              <div className="text-xs text-zinc-600">
-                Today is <span className="font-medium text-zinc-900">{new Date().toDateString()}</span>
-              </div>
-            ) : null}
+        <div className="flex-1 flex flex-wrap items-center gap-4 min-w-0">
+          {filters.preset !== "custom" && filters.preset !== "today" && (
+            <div className="h-6 w-px bg-white/10 mx-2 hidden md:block"></div>
+          )}
 
-            {filters.preset === "week" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="text-xs font-medium text-zinc-500">Year</div>
+          {filters.preset === "week" || filters.preset === "month" || filters.preset === "quarter" || filters.preset === "q2" || filters.preset === "q3" || filters.preset === "q4" || filters.preset === "year" ? (
+            <div className="flex items-center gap-3">
+              <select
+                className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer hover:text-brand-accent transition-colors"
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y} className="bg-brand-card">{y}</option>
+                ))}
+              </select>
+
+              {filters.preset === "week" && (
                 <select
-                  className="rounded-lg border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-800"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                >
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-xs font-medium text-zinc-500">Month</div>
-                <input
-                  type="month"
-                  className="rounded-lg border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-800"
-                  value={`${year}-${pad2(month + 1)}`}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (!v) return;
-                    const [yy, mm] = v.split("-");
-                    setYear(Number(yy));
-                    setMonth(Math.max(0, Math.min(11, Number(mm) - 1)));
-                  }}
-                />
-                <div className="text-xs font-medium text-zinc-500">Week</div>
-                <select
-                  className="rounded-lg border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-800"
+                  className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer hover:text-brand-accent transition-colors"
                   value={week}
                   onChange={(e) => setWeek(Number(e.target.value))}
                 >
                   {[1, 2, 3, 4, 5].map((w) => (
-                    <option key={w} value={w}>
-                      Week {w}
-                    </option>
+                    <option key={w} value={w} className="bg-brand-card">Week {w}</option>
                   ))}
                 </select>
-                <div className="text-xs text-zinc-500">
-                  Range: {filters.fromDate ?? "—"} → {filters.toDate ?? "—"}
-                </div>
-              </div>
-            ) : null}
+              )}
 
-            {filters.preset === "month" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="text-xs font-medium text-zinc-500">Month</div>
+              {(filters.preset === "week" || filters.preset === "month") && (
                 <input
                   type="month"
-                  className="rounded-lg border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-800"
+                  className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer hover:text-brand-accent transition-colors [color-scheme:dark]"
                   value={`${year}-${pad2(month + 1)}`}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -232,105 +211,60 @@ export function GlobalFilterBar({ filters, locations, onChange, hideLocation = f
                     setMonth(Math.max(0, Math.min(11, Number(mm) - 1)));
                   }}
                 />
-                <div className="text-xs text-zinc-500">
-                  Range: {filters.fromDate ?? "—"} → {filters.toDate ?? "—"}
-                </div>
-              </div>
-            ) : null}
+              )}
 
-            {filters.preset === "quarter" || filters.preset === "q2" || filters.preset === "q3" || filters.preset === "q4" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="text-xs font-medium text-zinc-500">Year</div>
+              {(filters.preset === "quarter" || filters.preset === "q2" || filters.preset === "q3" || filters.preset === "q4") && (
                 <select
-                  className="rounded-lg border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-800"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer hover:text-brand-accent transition-colors"
+                  value={safeQuarterMonth}
+                  onChange={(e) => setQuarterMonth(e.target.value === "" ? "" : Number(e.target.value))}
                 >
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
+                  <option value="" className="bg-brand-card">Full Quarter</option>
+                  {quarterMonths.map((mIdx) => (
+                    <option key={mIdx} value={mIdx} className="bg-brand-card">
+                      {new Date(2000, mIdx).toLocaleString('default', { month: 'long' })}
                     </option>
                   ))}
                 </select>
-                <div className="text-xs font-medium text-zinc-500">Month (optional)</div>
-                <select
-                  className="rounded-lg border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-800"
-                  value={quarterMonth === "" ? "" : String(quarterMonth)}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setQuarterMonth(v === "" ? "" : Number(v));
-                  }}
-                >
-                  <option value="">All quarter</option>
-                  {quarterMonths.map((m) => (
-                    <option key={m} value={m}>
-                      {new Date(year, m, 1).toLocaleString(undefined, { month: "long" })}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-xs text-zinc-500">
-                  Range: {filters.fromDate ?? "—"} → {filters.toDate ?? "—"}
-                </div>
-              </div>
-            ) : null}
+              )}
+            </div>
+          ) : null}
 
-            {filters.preset === "year" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="text-xs font-medium text-zinc-500">Year</div>
-                <select
-                  className="rounded-lg border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-800"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                >
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-xs text-zinc-500">
-                  Range: {filters.fromDate ?? "—"} → {filters.toDate ?? "—"}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+          {filters.preset === "custom" && (
+            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 transition-all">
+              <input
+                type="date"
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold text-white outline-none focus:border-brand-accent [color-scheme:dark]"
+                value={filters.fromDate ?? ""}
+                onChange={(e) => onChange({ ...filters, fromDate: e.target.value || undefined })}
+              />
+              <span className="text-slate-600 text-[10px] font-black">TO</span>
+              <input
+                type="date"
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold text-white outline-none focus:border-brand-accent [color-scheme:dark]"
+                value={filters.toDate ?? ""}
+                onChange={(e) => onChange({ ...filters, toDate: e.target.value || undefined })}
+              />
+            </div>
+          )}
+        </div>
 
-        {filters.preset === "custom" ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="text-xs font-medium text-zinc-500">From</div>
-            <input
-              type="date"
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-800"
-              value={filters.fromDate ?? ""}
-              onChange={(e) => onChange({ ...filters, fromDate: e.target.value || undefined })}
-            />
-            <div className="text-xs font-medium text-zinc-500">To</div>
-            <input
-              type="date"
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-800"
-              value={filters.toDate ?? ""}
-              onChange={(e) => onChange({ ...filters, toDate: e.target.value || undefined })}
-            />
-          </div>
-        ) : null}
-
-        {!hideLocation ? (
-          <div className="ml-auto flex items-center gap-2">
-            <div className="text-xs font-medium text-zinc-500">Location</div>
+        {!hideLocation && (
+          <div className="flex items-center gap-3 pl-4 border-l border-white/10">
+            <MapPin className="w-4 h-4 text-emerald-400" />
             <select
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-800"
+              className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer hover:text-brand-accent transition-colors"
               value={filters.location}
               onChange={(e) => onChange({ ...filters, location: e.target.value })}
             >
               {locations.map((l) => (
-                <option key={l} value={l}>
+                <option key={l} value={l} className="bg-brand-card">
                   {l}
                 </option>
               ))}
             </select>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );

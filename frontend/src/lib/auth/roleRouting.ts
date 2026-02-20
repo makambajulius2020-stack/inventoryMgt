@@ -1,41 +1,47 @@
-import type { RoleName } from "@/lib/auth/types";
+import { RoleName } from "./types";
 
 const ROLE_PRIORITY: RoleName[] = [
   "CEO",
-  "BRANCH_MANAGER",
-  "PROCUREMENT_HEAD",
+  "SYSTEM_AUDITOR",
+  "GENERAL_MANAGER",
+  "FINANCE_MANAGER",
+  "PROCUREMENT_OFFICER",
   "STORE_MANAGER",
-  "FINANCE",
   "DEPARTMENT_HEAD",
-  "DEPARTMENT_STAFF",
 ];
 
 export function getHighestPriorityRole(roles: string[]): RoleName | null {
-  const set = new Set(roles);
-  for (const r of ROLE_PRIORITY) {
-    if (set.has(r)) return r;
+  for (const role of ROLE_PRIORITY) {
+    if (roles.includes(role)) return role;
   }
   return null;
 }
 
 export function getLandingRouteForRoles(roles: string[]): string {
   const highest = getHighestPriorityRole(roles);
-  switch (highest) {
-    case "CEO":
-      return "/ceo/dashboard";
-    case "BRANCH_MANAGER":
-      return "/branch/dashboard";
-    case "PROCUREMENT_HEAD":
-      return "/procurement/dashboard";
-    case "STORE_MANAGER":
-      return "/store/dashboard";
-    case "FINANCE":
-      return "/finance/dashboard";
-    case "DEPARTMENT_HEAD":
-      return "/department/dashboard";
-    case "DEPARTMENT_STAFF":
-      return "/requisitions/new";
-    default:
-      return "/login";
-  }
+
+  const landingMap: Record<RoleName, string> = {
+    CEO: "/ceo/dashboard",
+    SYSTEM_AUDITOR: "/auditor/dashboard",
+    GENERAL_MANAGER: "/gm/dashboard",
+    FINANCE_MANAGER: "/finance/dashboard",
+    PROCUREMENT_OFFICER: "/procurement/dashboard",
+    STORE_MANAGER: "/inventory/dashboard",
+    DEPARTMENT_HEAD: "/department/dashboard",
+  };
+
+  return highest ? landingMap[highest] : "/login";
+}
+
+export function getRolePrefix(role: RoleName): string {
+  const prefixMap: Record<RoleName, string> = {
+    CEO: "ceo",
+    SYSTEM_AUDITOR: "auditor",
+    GENERAL_MANAGER: "gm",
+    FINANCE_MANAGER: "finance",
+    PROCUREMENT_OFFICER: "procurement",
+    STORE_MANAGER: "inventory",
+    DEPARTMENT_HEAD: "department",
+  };
+  return prefixMap[role];
 }

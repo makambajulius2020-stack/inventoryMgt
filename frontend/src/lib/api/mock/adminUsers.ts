@@ -7,7 +7,6 @@ import type {
   CreateAdminUserResultDTO,
   UserStatus,
 } from "@/lib/api/types";
-import type { RoleName } from "@/lib/auth/types";
 import { ALL_BRANCHES_LABEL, getDemoBranchPool } from "@/lib/locations";
 
 function nowIso() {
@@ -35,10 +34,10 @@ let USERS: AdminUserDTO[] = [
     lastLogin: nowIso(),
   },
   {
-    id: "u_bm_1",
-    fullName: "Branch Manager (The Patiobela)",
-    email: "bm.patiobela@demo.local",
-    role: "BRANCH_MANAGER",
+    id: "u_gm_1",
+    fullName: "General Manager (The Patiobela)",
+    email: "gm.patiobela@demo.local",
+    role: "GENERAL_MANAGER",
     branch: BRANCHES[0] ?? "The Patiobela",
     status: "ACTIVE",
     lastLogin: nowIso(),
@@ -47,31 +46,21 @@ let USERS: AdminUserDTO[] = [
     id: "u_fin_1",
     fullName: "Finance (The Maze Bistro)",
     email: "finance.bistro@demo.local",
-    role: "FINANCE",
+    role: "FINANCE_MANAGER",
     branch: BRANCHES[1] ?? "The Maze Bistro",
-    status: "ACTIVE",
-    lastLogin: nowIso(),
-  },
-  {
-    id: "u_dh_1",
-    fullName: "Kitchen Head (Itaru)",
-    email: "kitchen.head@demo.local",
-    role: "DEPARTMENT_HEAD",
-    branch: BRANCHES[3] ?? "Itaru",
-    department: "Kitchen",
     status: "ACTIVE",
     lastLogin: nowIso(),
   },
 ];
 
-let AUDIT: AdminUserAuditEventDTO[] = [
+const AUDIT: AdminUserAuditEventDTO[] = [
   {
     id: "audit_1",
-    userId: "u_bm_1",
+    userId: "u_gm_1",
     actorName: "CEO User",
     action: "USER_CREATED",
     at: nowIso(),
-    details: "Created BRANCH_MANAGER for branch",
+    details: "Created GENERAL_MANAGER for location",
   },
 ];
 
@@ -79,7 +68,6 @@ function matchesFilters(u: AdminUserDTO, f?: AdminUsersFilters) {
   if (!f) return true;
   if (f.branch && u.branch !== f.branch) return false;
   if (f.role && u.role !== f.role) return false;
-  if (f.department && u.department !== f.department) return false;
   if (f.status && u.status !== f.status) return false;
   return true;
 }
@@ -95,32 +83,15 @@ function validate(input: CreateAdminUserInput) {
 
   const role = input.role;
   const needsBranch = role !== "CEO";
-  const deptRoles: RoleName[] = ["DEPARTMENT_HEAD", "DEPARTMENT_STAFF"];
-  const needsDept = deptRoles.includes(role);
+  const needsDept = false;
 
   if (needsBranch) {
     if (!input.branch || input.branch === ALL_BRANCHES_LABEL) throw new Error("Branch is required for this role");
   }
 
   if (needsDept) {
-    if (!input.department) throw new Error("Department is required for this role");
+    throw new Error("Department is required for this role");
   }
-}
-
-function enforceSingleBranchManager(branch: string, replace?: boolean) {
-  const existing = USERS.find((u) => u.role === "BRANCH_MANAGER" && u.branch === branch && u.status === "ACTIVE");
-  if (!existing) return;
-  if (!replace) throw new Error(`Branch Manager already exists for ${branch}`);
-
-  existing.status = "SUSPENDED";
-  AUDIT.unshift({
-    id: uid("audit"),
-    userId: existing.id,
-    actorName: "CEO User",
-    action: "USER_DISABLED",
-    at: nowIso(),
-    details: `Auto-suspended due to Branch Manager replacement for ${branch}`,
-  });
 }
 
 export const mockAdminUsersApi: AdminUsersApi = {
@@ -128,13 +99,8 @@ export const mockAdminUsersApi: AdminUsersApi = {
     return { rows: USERS.filter((u) => matchesFilters(u, filters)) };
   },
 
-  async create(input: CreateAdminUserInput, params?: { replaceBranchManagerForBranch?: string }): Promise<CreateAdminUserResultDTO> {
+  async create(input: CreateAdminUserInput): Promise<CreateAdminUserResultDTO> {
     validate(input);
-
-    if (input.role === "BRANCH_MANAGER") {
-      if (!input.branch) throw new Error("Branch is required for Branch Manager");
-      enforceSingleBranchManager(input.branch, params?.replaceBranchManagerForBranch === input.branch);
-    }
 
     const user: AdminUserDTO = {
       id: uid("u"),
@@ -143,7 +109,6 @@ export const mockAdminUsersApi: AdminUsersApi = {
       phone: input.phone,
       role: input.role,
       branch: input.branch,
-      department: input.department,
       status: input.status,
       lastLogin: undefined,
     };
