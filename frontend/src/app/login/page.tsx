@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Lock, Mail, ChevronRight, Hexagon } from "lucide-react";
+import Image from "next/image";
+import { Lock, Mail, ChevronRight } from "lucide-react";
 
 import { api } from "@/lib/api/client";
 import { getLandingRouteForRoles } from "@/lib/auth/roleRouting";
@@ -16,6 +16,7 @@ const MOCK_USERS = [
   { email: "finance.pb@company.com", label: "Finance Manager", scope: "Patiobela" },
   { email: "proc.pb@company.com", label: "Procurement", scope: "Patiobela" },
   { email: "store.pb@company.com", label: "Store Manager", scope: "Patiobela" },
+  { email: "controller.pb@company.com", label: "Store Controller", scope: "Patiobela" },
 ];
 
 export default function LoginPage() {
@@ -63,91 +64,83 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#000b18] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4 relative overflow-hidden font-sans">
       {/* Background Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#001F3F]/30 blur-[120px] rounded-full" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[var(--accent)]/20 blur-[140px] rounded-full" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-white dark:bg-[#00162a] rounded-[32px] overflow-hidden shadow-2xl p-8 md:p-12 relative z-10 border border-slate-100 dark:border-white/5"
-      >
+      <div className="w-full max-w-md glass rounded-[32px] overflow-hidden shadow-2xl p-8 md:p-12 relative z-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
         <div className="flex flex-col items-center mb-10">
-          <div className="w-16 h-16 bg-[#001F3F] rounded-2xl flex items-center justify-center mb-4 shadow-xl">
-            <Hexagon className="w-8 h-8 text-teal-400 fill-teal-400/20" />
+          <div className="w-16 h-16 bg-[#001F3F] rounded-2xl flex items-center justify-center mb-4 shadow-xl overflow-hidden">
+            <Image src="/Hugamara-Logo.jpeg" alt="HUGAMARA" width={64} height={64} className="w-full h-full object-cover" priority />
           </div>
-          <h2 className="text-2xl font-black text-[#001F3F] dark:text-white tracking-tight uppercase">Command Center</h2>
-          <p className="text-slate-500 font-medium text-sm">Enterprise Management Identity</p>
+          <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight uppercase">HUGAMARA</h2>
+          <p className="text-[var(--text-secondary)] font-medium text-sm">Enterprise Management System</p>
         </div>
 
         <form className="space-y-6" onSubmit={onSubmit}>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Secure Email</label>
+            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Secure Email</label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="identity@company.com"
-                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-6 text-slate-900 dark:text-white font-bold focus:border-teal-500 focus:ring-4 focus:ring-teal-500/5 outline-none transition-all"
+                className="w-full bg-[var(--input)] border border-[var(--input-border)] rounded-2xl py-4 pl-12 pr-6 text-[var(--text-primary)] font-bold focus:border-[var(--input-focus)] focus:ring-4 focus:ring-[var(--ring)]/15 outline-none transition-all"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Access Token</label>
+            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Access Token</label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-6 text-slate-900 dark:text-white font-bold focus:border-teal-500 focus:ring-4 focus:ring-teal-500/5 outline-none transition-all"
+                className="w-full bg-[var(--input)] border border-[var(--input-border)] rounded-2xl py-4 pl-12 pr-6 text-[var(--text-primary)] font-bold focus:border-[var(--input-focus)] focus:ring-4 focus:ring-[var(--ring)]/15 outline-none transition-all"
                 required
               />
             </div>
           </div>
 
           {error && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-black uppercase tracking-widest"
-            >
+            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-left-2 duration-200">
               {error}
-            </motion.div>
+            </div>
           )}
 
           <button
             disabled={submitting}
-            className="w-full py-4 bg-[#001F3F] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-[#001F3F]/20 hover:bg-[#002d5c] active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-3"
+            className="w-full py-4 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-black/30 hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-3"
           >
             {submitting ? "Authenticating..." : "Authorize Access"}
           </button>
         </form>
 
-        <div className="mt-10 pt-8 border-t border-slate-100 dark:border-white/5">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-6">Quick Switch Identity</p>
+        <div className="mt-10 pt-8 border-t border-white/10">
+          <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest text-center mb-6">Quick Switch Identity</p>
           <div className="grid grid-cols-2 gap-3">
             {MOCK_USERS.map((user) => (
               <button
                 key={user.email}
                 onClick={() => handleQuickLogin(user.email)}
-                className="text-left p-2.5 rounded-xl border border-slate-100 dark:border-white/5 hover:border-teal-500 hover:bg-slate-50 dark:hover:bg-white/5 transition-all group"
+                className="text-left p-2.5 rounded-xl border border-white/10 hover:border-[var(--accent-hover)] hover:bg-white/5 transition-all group"
               >
-                <p className="text-[10px] font-black text-[#001F3F] dark:text-teal-400 uppercase mb-0.5 truncate">{user.label}</p>
+                <p className="text-[10px] font-black text-[var(--accent-hover)] uppercase mb-0.5 truncate">{user.label}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-500 truncate">{user.scope}</span>
-                  <ChevronRight className="w-3 h-3 text-slate-300 group-hover:text-teal-500 transition-all" />
+                  <span className="text-[10px] font-bold text-[var(--text-secondary)] truncate">{user.scope}</span>
+                  <ChevronRight className="w-3 h-3 text-[var(--text-muted)] group-hover:text-[var(--accent-hover)] transition-all" />
                 </div>
               </button>
             ))}
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

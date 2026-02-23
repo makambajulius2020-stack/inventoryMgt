@@ -198,24 +198,24 @@ describe("Finance Engine (Phase 2.3)", () => {
     });
 
     const pnl = await financeService.getProfitAndLoss(financePb, {
-      from: "2026-02-16T00:00:00Z",
-      to: "2026-02-20T23:59:59Z",
+      from: "2020-01-01T00:00:00Z",
+      to: "2030-01-01T00:00:00Z",
       locationId: pb,
     });
     expect(pnl.revenue).toBeGreaterThan(0);
     expect(pnl.operatingExpenses).toBeGreaterThan(0);
 
     const cf = await financeService.getCashFlowReport(financePb, {
-      from: "2026-02-16T00:00:00Z",
-      to: "2026-02-20T23:59:59Z",
+      from: "2020-01-01T00:00:00Z",
+      to: "2030-01-01T00:00:00Z",
       locationId: pb,
     });
     expect(cf.cashFromSales).toBeGreaterThan(0);
     expect(cf.cashPaidForExpenses).toBeGreaterThan(0);
 
     const ex = await financeService.getExpenditureVsIncome(financePb, {
-      from: "2026-02-16T00:00:00Z",
-      to: "2026-02-20T23:59:59Z",
+      from: "2020-01-01T00:00:00Z",
+      to: "2030-01-01T00:00:00Z",
       locationId: pb,
     });
     expect(ex.totalIncome).toBe(pnl.revenue);

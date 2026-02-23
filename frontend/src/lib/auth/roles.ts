@@ -6,6 +6,7 @@ export enum Role {
   PROCUREMENT_OFFICER = "PROCUREMENT_OFFICER",
   STORE_MANAGER = "STORE_MANAGER",
   FINANCE_MANAGER = "FINANCE_MANAGER",
+  STORE_CONTROLLER = "STORE_CONTROLLER",
 }
 
 export type ScopeKind = "GLOBAL" | "LOCATION" | "DEPARTMENT";
@@ -30,6 +31,7 @@ export const ROLE_SCOPE_KIND: Record<Role, ScopeKind> = {
   [Role.PROCUREMENT_OFFICER]: "LOCATION",
   [Role.STORE_MANAGER]: "LOCATION",
   [Role.FINANCE_MANAGER]: "LOCATION",
+  [Role.STORE_CONTROLLER]: "LOCATION",
 };
 
 export function isReadOnlyRole(role: Role) {
@@ -46,6 +48,7 @@ export function normalizeRole(input: string): Role | null {
   if (upper === "PROCUREMENT_OFFICER" || upper === "PROCUREMENT") return Role.PROCUREMENT_OFFICER;
   if (upper === "STORE_MANAGER" || upper === "STORE" || upper === "INVENTORY") return Role.STORE_MANAGER;
   if (upper === "FINANCE_MANAGER" || upper === "FINANCE") return Role.FINANCE_MANAGER;
+  if (upper === "STORE_CONTROLLER" || upper === "CONTROLLER") return Role.STORE_CONTROLLER;
 
   return null;
 }

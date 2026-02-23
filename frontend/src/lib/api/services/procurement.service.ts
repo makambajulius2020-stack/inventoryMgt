@@ -360,7 +360,7 @@ export const procurementService = {
             if (newStatus === "SUBMITTED") {
                 assertProcurementRole(user, [Role.DEPARTMENT_HEAD, Role.PROCUREMENT_OFFICER, Role.GENERAL_MANAGER]);
             } else {
-                assertProcurementRole(user, [Role.PROCUREMENT_OFFICER, Role.GENERAL_MANAGER]);
+                assertProcurementRole(user, [Role.PROCUREMENT_OFFICER, Role.GENERAL_MANAGER, Role.STORE_MANAGER]);
             }
 
             assertTransition(req.status, newStatus, TRANSITIONS.REQUISITION);

@@ -10,47 +10,47 @@
 /* ── DARK MODE (DEFAULT) ──────────────────────────────────────────────────── */
 :root {
   /* Core palette */
-  --primary:            #001F3F;
-  --primary-hover:      #002B57;
+  --primary:            #0B1C2D;
+  --primary-hover:      #0F2740;
   --primary-foreground: #FFFFFF;
 
-  --accent:             #14B8A6;
-  --accent-hover:       #0D9488;
+  --accent:             #1E88E5;
+  --accent-hover:       #00C2FF;
   --accent-foreground:  #FFFFFF;
-  --accent-muted:       rgba(20, 184, 166, 0.15);
+  --accent-muted:       rgba(30, 136, 229, 0.15);
 
   /* Surfaces */
-  --background:         #000B18;
-  --foreground:         #F1F5F9;
-  --surface:            #001122;
-  --surface-raised:     #001A33;
-  --surface-muted:      #000E1C;
+  --background:         #0B1C2D;
+  --foreground:         #EAF4FF;
+  --surface:            #0F2740;
+  --surface-raised:     rgba(15, 39, 64, 0.55);
+  --surface-muted:      #0B1C2D;
 
   /* Cards */
-  --card:               #00162A;
-  --card-foreground:    #F1F5F9;
-  --card-border:        rgba(255, 255, 255, 0.06);
+  --card:               rgba(15, 39, 64, 0.55);
+  --card-foreground:    #EAF4FF;
+  --card-border:        rgba(255, 255, 255, 0.08);
 
   /* Popovers / Dropdowns / Modals */
-  --popover:            #001A33;
-  --popover-foreground: #F1F5F9;
+  --popover:            rgba(15, 39, 64, 0.85);
+  --popover-foreground: #EAF4FF;
 
   /* Borders & Inputs */
-  --border:             #1E293B;
-  --border-subtle:      rgba(255, 255, 255, 0.06);
-  --input:              #0F172A;
-  --input-border:       #1E293B;
-  --input-focus:        #14B8A6;
+  --border:             rgba(255, 255, 255, 0.12);
+  --border-subtle:      rgba(255, 255, 255, 0.08);
+  --input:              rgba(15, 39, 64, 0.55);
+  --input-border:       rgba(255, 255, 255, 0.12);
+  --input-focus:        #00C2FF;
 
   /* Ring (focus outlines) */
-  --ring:               #14B8A6;
-  --ring-offset:        #000B18;
+  --ring:               #00C2FF;
+  --ring-offset:        #0B1C2D;
 
   /* Text hierarchy */
-  --text-primary:       #F1F5F9;
-  --text-secondary:     #94A3B8;
-  --text-muted:         #64748B;
-  --text-disabled:      #475569;
+  --text-primary:       #EAF4FF;
+  --text-secondary:     #AFC8E6;
+  --text-muted:         #6E8BAA;
+  --text-disabled:      #6E8BAA;
 
   /* Semantic status */
   --success:            #22C55E;
@@ -70,7 +70,7 @@
   --radius-2xl:         1.25rem;
 
   /* Sidebar */
-  --sidebar:            #001F3F;
+  --sidebar:            rgba(15, 39, 64, 0.75);
   --sidebar-foreground: #FFFFFF;
   --sidebar-accent:     rgba(255, 255, 255, 0.08);
   --sidebar-border:     rgba(255, 255, 255, 0.06);
@@ -156,6 +156,7 @@
 
   body {
     background-color: var(--background);
+    background-image: none;
     color: var(--foreground);
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
@@ -207,9 +208,11 @@
 
   /* Glass effect */
   .glass {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(15, 39, 64, 0.55);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    border-radius: 16px;
   }
 
   .light .glass {

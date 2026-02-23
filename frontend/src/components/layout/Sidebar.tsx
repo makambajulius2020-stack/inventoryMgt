@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import {
     LayoutDashboard,
     ShieldCheck,
@@ -13,50 +14,87 @@ import {
     Users,
     LogOut,
     ChevronRight,
-    Hexagon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { RoleName } from "@/lib/auth/types";
+import { mockDB } from "@/lib/mock-db";
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ className?: string }> };
 
 const NAV_ITEMS: Partial<Record<RoleName, NavItem[]>> = {
     CEO: [
-        { label: "Executive Suite", href: "/ceo/dashboard", icon: LayoutDashboard },
-        { label: "Executive Reports", href: "/ceo/reports", icon: Layers },
-        { label: "Role Assignment", href: "/ceo/users", icon: ShieldCheck },
-        { label: "Global Users", href: "/admin/users", icon: Users },
+        { label: "Executive Overview", href: "/ceo/dashboard", icon: LayoutDashboard },
+        { label: "Financial Intelligence", href: "/ceo/financial-intelligence", icon: DollarSign },
+        { label: "Operational Overview", href: "/ceo/operational-overview", icon: Layers },
+        { label: "Procurement Overview", href: "/ceo/procurement-overview", icon: ShoppingCart },
+        { label: "Inventory Status", href: "/ceo/inventory-status", icon: Package },
+        { label: "Sales Analytics", href: "/ceo/sales-analytics", icon: DollarSign },
+        { label: "Audit & Controls", href: "/ceo/audit-controls", icon: ShieldCheck },
+        { label: "Reports & Exports", href: "/ceo/reports", icon: Layers },
     ],
     SYSTEM_AUDITOR: [
-        { label: "Audit Vault", href: "/auditor/dashboard", icon: ShieldCheck },
-        { label: "Entity Register", href: "/auditor/entities", icon: Package },
-        { label: "Lifecycle Trace", href: "/auditor/trace", icon: Layers },
+        { label: "System Logs", href: "/auditor/dashboard", icon: ShieldCheck },
+        { label: "Financial Audit", href: "/auditor/financial-audit", icon: DollarSign },
+        { label: "Stock Movement Audit", href: "/auditor/stock-movement-audit", icon: Package },
+        { label: "User Activity", href: "/auditor/user-activity", icon: Users },
+        { label: "Cross Location Reports", href: "/auditor/cross-location-reports", icon: Layers },
+    ],
+    STORE_CONTROLLER: [
+        { label: "Dashboard", href: "/store-controller/dashboard", icon: LayoutDashboard },
+        { label: "Inventory Integrity", href: "/store-controller/inventory-integrity", icon: ShieldCheck },
+        { label: "Procurement Flow", href: "/store-controller/procurement-flow", icon: ShoppingCart },
+        { label: "Department Stock", href: "/store-controller/department-stock", icon: Package },
     ],
     GENERAL_MANAGER: [
-        { label: "Branch Control", href: "/gm/dashboard", icon: LayoutDashboard },
-        { label: "Inventory Health", href: "/gm/inventory", icon: Package },
-        { label: "Financial Pulse", href: "/gm/finance", icon: DollarSign },
+        { label: "Location Overview", href: "/gm/dashboard", icon: LayoutDashboard },
+        { label: "Department Performance", href: "/gm/department-performance", icon: Users },
+        { label: "Approvals", href: "/gm/approvals", icon: ShieldCheck },
+        { label: "Financial Summary", href: "/gm/financial-summary", icon: DollarSign },
+        { label: "Procurement Status", href: "/gm/procurement-status", icon: ShoppingCart },
+        { label: "Inventory Status", href: "/gm/inventory-status", icon: Package },
     ],
     DEPARTMENT_HEAD: [
-        { label: "Dept Overview", href: "/department/dashboard", icon: LayoutDashboard },
-        { label: "Budget & Usage", href: "/department/budget", icon: DollarSign },
+        { label: "Department Dashboard", href: "/department/dashboard", icon: LayoutDashboard },
         { label: "Requisitions", href: "/department/requisitions", icon: ShoppingCart },
+        { label: "Stock Requests", href: "/department/stock-requests", icon: Package },
+        { label: "Transfers", href: "/department/transfers", icon: Layers },
+        { label: "Performance", href: "/department/performance", icon: DollarSign },
     ],
     PROCUREMENT_OFFICER: [
-        { label: "Procurement Hub", href: "/procurement/dashboard", icon: LayoutDashboard },
-        { label: "Purchase Orders", href: "/procurement/lpos", icon: ShoppingCart },
-        { label: "Vendor Registry", href: "/procurement/vendors", icon: Users },
+        { label: "Dashboard", href: "/procurement/dashboard", icon: LayoutDashboard },
+        { label: "Requisitions", href: "/procurement/requisitions", icon: ShoppingCart },
+        { label: "LPO Management", href: "/procurement/lpo-management", icon: Layers },
+        { label: "GRN Management", href: "/procurement/grn-management", icon: Package },
+        { label: "Vendor Invoices", href: "/procurement/vendor-invoices", icon: DollarSign },
+        { label: "Vendor Ledger", href: "/procurement/vendor-ledger", icon: Users },
+        { label: "Purchase Reports", href: "/procurement/purchase-reports", icon: Layers },
+        { label: "Variance & Reconciliation", href: "/procurement/variance-reconciliation", icon: ShieldCheck },
     ],
     STORE_MANAGER: [
-        { label: "Inventory Hub", href: "/inventory/dashboard", icon: LayoutDashboard },
-        { label: "Stock Control", href: "/inventory/stock", icon: Package },
-        { label: "Movements", href: "/inventory/movements", icon: Layers },
+        { label: "Dashboard", href: "/inventory/dashboard", icon: LayoutDashboard },
+        { label: "Location Stock", href: "/inventory/stock", icon: Package },
+        { label: "Location Inventory", href: "/inventory/location-inventory", icon: Package },
+        { label: "GRN Stock Entry", href: "/inventory/grn-stock-entry", icon: Package },
+        { label: "Dept Stock Requests", href: "/inventory/department-stock-requests", icon: ShoppingCart },
+        { label: "Department Stock", href: "/inventory/department-stock", icon: Users },
+        { label: "Stock Transfers", href: "/inventory/stock-transfers", icon: Layers },
+        { label: "Adjustments", href: "/inventory/adjustments", icon: ShieldCheck },
+        { label: "Monthly Stock Count", href: "/inventory/monthly-stock-count", icon: Package },
+        { label: "Inventory Valuation", href: "/inventory/inventory-valuation", icon: DollarSign },
+        { label: "Reports", href: "/inventory/reports", icon: Layers },
     ],
     FINANCE_MANAGER: [
-        { label: "Finance Hub", href: "/finance/dashboard", icon: LayoutDashboard },
-        { label: "Accounts Payable", href: "/finance/ap", icon: DollarSign },
+        { label: "Dashboard", href: "/finance/dashboard", icon: LayoutDashboard },
+        { label: "Accounts Payable", href: "/finance/accounts-payable", icon: DollarSign },
+        { label: "Payments", href: "/finance/payments", icon: DollarSign },
         { label: "Expenses", href: "/finance/expenses", icon: Layers },
+        { label: "Petty Cash", href: "/finance/petty-cash", icon: Layers },
+        { label: "Sales Oversight", href: "/finance/sales-oversight", icon: DollarSign },
+        { label: "Profit & Loss", href: "/finance/profit-loss", icon: DollarSign },
+        { label: "Cash Flow", href: "/finance/cash-flow", icon: Layers },
+        { label: "Bank Reconciliation", href: "/finance/bank-reconciliation", icon: ShieldCheck },
+        { label: "Reports", href: "/finance/reports", icon: Users },
     ],
 };
 
@@ -65,6 +103,12 @@ export function Sidebar({ open = true, onClose }: { open?: boolean; onClose?: ()
     const { state, logout } = useAuth();
     const role = state.roles[0] as RoleName;
     const items = NAV_ITEMS[role] ?? [];
+    const locationBadge = React.useMemo(() => {
+        if (state.user?.scope.allLocations) return "Global";
+        const locationId = state.user?.scope.locationId;
+        if (!locationId) return "Scoped";
+        return mockDB.locations.find((l) => l.id === locationId)?.name ?? locationId;
+    }, [state.user?.scope.allLocations, state.user?.scope.locationId]);
 
     return (
         <>
@@ -77,19 +121,19 @@ export function Sidebar({ open = true, onClose }: { open?: boolean; onClose?: ()
             />
             <aside
                 className={cn(
-                    "fixed left-0 top-0 h-full w-[280px] bg-[#001F3F] text-white flex flex-col z-50 transition-transform md:translate-x-0",
+                    "fixed left-0 top-0 h-full w-[280px] bg-[var(--sidebar)] text-white flex flex-col z-50 transition-transform md:translate-x-0 backdrop-blur-xl border-r border-white/10",
                     open ? "translate-x-0" : "-translate-x-full"
                 )}
             >
             {/* Branding */}
             <div className="p-8">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20">
-                        <Hexagon className="w-6 h-6 text-white fill-white/20" />
+                    <div className="w-12 h-12 rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+                        <Image src="/Hugamara-Logo.jpeg" alt="HUGAMARA" width={48} height={48} className="w-full h-full object-cover" priority />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black tracking-tighter uppercase leading-none">Antigravity</h2>
-                        <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest mt-1">Enterprise Core</p>
+                        <h2 className="text-xl font-black tracking-tighter uppercase leading-none">HUGAMARA</h2>
+                        <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest mt-1">Enterprise Management System</p>
                     </div>
                 </div>
             </div>
@@ -125,12 +169,15 @@ export function Sidebar({ open = true, onClose }: { open?: boolean; onClose?: ()
             <div className="p-6">
                 <div className="p-4 bg-white/5 rounded-3xl border border-white/5">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-black text-[#001F3F] bg-teal-400">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center font-black bg-white/10 text-[var(--accent-hover)] border border-white/10">
                             {state.user?.name?.[0]}
                         </div>
                         <div className="overflow-hidden">
                             <p className="text-sm font-bold truncate">{state.user?.name}</p>
                             <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest leading-none">{role}</p>
+                            <p className="mt-1 inline-flex max-w-full truncate px-2 py-0.5 rounded-lg bg-white/10 border border-white/10 text-[9px] font-black uppercase tracking-wider text-slate-200">
+                                {locationBadge}
+                            </p>
                         </div>
                     </div>
                     <button

@@ -3,6 +3,7 @@
 import type { DashboardFilters, DateRangePreset } from "@/lib/api/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { mockDB } from "@/lib/mock-db";
 import { Calendar, MapPin } from "lucide-react";
 
 const PRESETS: { key: DateRangePreset; label: string }[] = [
@@ -182,7 +183,7 @@ export function GlobalFilterBar({ filters, locations, onChange, hideLocation = f
                 onChange={(e) => setYear(Number(e.target.value))}
               >
                 {yearOptions.map((y) => (
-                  <option key={y} value={y} className="bg-brand-card">{y}</option>
+                  <option key={y} value={y} className="bg-[var(--surface)] text-[var(--text-primary)]">{y}</option>
                 ))}
               </select>
 
@@ -193,7 +194,7 @@ export function GlobalFilterBar({ filters, locations, onChange, hideLocation = f
                   onChange={(e) => setWeek(Number(e.target.value))}
                 >
                   {[1, 2, 3, 4, 5].map((w) => (
-                    <option key={w} value={w} className="bg-brand-card">Week {w}</option>
+                    <option key={w} value={w} className="bg-[var(--surface)] text-[var(--text-primary)]">Week {w}</option>
                   ))}
                 </select>
               )}
@@ -219,9 +220,9 @@ export function GlobalFilterBar({ filters, locations, onChange, hideLocation = f
                   value={safeQuarterMonth}
                   onChange={(e) => setQuarterMonth(e.target.value === "" ? "" : Number(e.target.value))}
                 >
-                  <option value="" className="bg-brand-card">Full Quarter</option>
+                  <option value="" className="bg-[var(--surface)] text-[var(--text-primary)]">Full Quarter</option>
                   {quarterMonths.map((mIdx) => (
-                    <option key={mIdx} value={mIdx} className="bg-brand-card">
+                    <option key={mIdx} value={mIdx} className="bg-[var(--surface)] text-[var(--text-primary)]">
                       {new Date(2000, mIdx).toLocaleString('default', { month: 'long' })}
                     </option>
                   ))}
@@ -258,8 +259,8 @@ export function GlobalFilterBar({ filters, locations, onChange, hideLocation = f
               onChange={(e) => onChange({ ...filters, location: e.target.value })}
             >
               {locations.map((l) => (
-                <option key={l} value={l} className="bg-brand-card">
-                  {l}
+                <option key={l} value={l} className="bg-[var(--surface)] text-[var(--text-primary)]">
+                  {l === "ALL" ? "All Branches" : (mockDB.locations.find((x) => x.id === l)?.name ?? l)}
                 </option>
               ))}
             </select>

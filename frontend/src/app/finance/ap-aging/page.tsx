@@ -4,7 +4,6 @@ import React from "react";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Clock, AlertTriangle, CheckCircle2, TrendingUp } from "lucide-react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const MOCK_DATA = [
@@ -16,6 +15,11 @@ const MOCK_DATA = [
 
 export default function FinanceAPAging() {
     const totalAP = MOCK_DATA.reduce((acc, curr) => acc + curr.amount, 0);
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
     return (
         <div className="space-y-8">
@@ -51,7 +55,7 @@ export default function FinanceAPAging() {
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dx={-10} />
                                     <Tooltip
                                         cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                                        contentStyle={{ backgroundColor: '#102B52', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
+                                        contentStyle={{ backgroundColor: 'rgba(15, 39, 64, 0.9)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
                                         itemStyle={{ color: '#fff' }}
                                     />
                                     <Bar dataKey="amount" radius={[8, 8, 0, 0]} barSize={60}>
@@ -64,7 +68,7 @@ export default function FinanceAPAging() {
                         </div>
                     </div>
 
-                    <div className="bg-[#102B52] rounded-[32px] p-8 border border-white/10 shadow-premium">
+                    <div className="glass rounded-[32px] p-8 border border-white/10 shadow-premium">
                         <h3 className="text-xl font-bold text-white mb-6">Status Breakdown</h3>
                         <div className="space-y-6">
                             {MOCK_DATA.map((item) => (
@@ -77,11 +81,9 @@ export default function FinanceAPAging() {
                                         <span className="text-sm font-black text-white">UGX {(item.amount / 1000).toFixed(1)}k</span>
                                     </div>
                                     <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${(item.amount / totalAP) * 100}%` }}
-                                            className="h-full rounded-full"
-                                            style={{ backgroundColor: item.color }}
+                                        <div
+                                            className="h-full rounded-full transition-[width] duration-1000 ease-out"
+                                            style={{ backgroundColor: item.color, width: mounted ? `${(item.amount / totalAP) * 100}%` : "0%" }}
                                         />
                                     </div>
                                     <div className="mt-1 flex justify-end">
@@ -94,7 +96,7 @@ export default function FinanceAPAging() {
                                 </div>
                             ))}
                         </div>
-                        <button className="w-full mt-8 py-3 rounded-2xl bg-white/5 border border-white/10 text-white text-xs font-bold hover:bg-brand-accent hover:border-brand-accent transition-all">
+                        <button className="w-full mt-8 py-3 rounded-2xl bg-white/5 border border-white/10 text-white text-xs font-bold hover:bg-[var(--accent)] hover:border-[var(--accent)] transition-all">
                             Review Critical Invoices
                         </button>
                     </div>

@@ -4,19 +4,22 @@ import React from "react";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Wallet, Target, TrendingDown, Landmark, Plus, ArrowUpRight } from "lucide-react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const BUDGET_DATA = [
     { name: "Patiobela", allocated: 250000, spent: 180000, color: "#2C6BED" },
-    { name: "Maze Bistro", allocated: 180000, spent: 165000, color: "#8b5cf6" },
     { name: "Eateroo", allocated: 150000, spent: 142000, color: "#ec4899" },
-    { name: "Rosa Dames", allocated: 200000, spent: 85000, color: "#10b981" },
+    { name: "Villa", allocated: 200000, spent: 85000, color: "#10b981" },
 ];
 
 export default function FinanceBudget() {
     const totalAllocated = BUDGET_DATA.reduce((acc, curr) => acc + curr.allocated, 0);
     const totalSpent = BUDGET_DATA.reduce((acc, curr) => acc + curr.spent, 0);
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
     return (
         <div className="space-y-8">
@@ -25,7 +28,7 @@ export default function FinanceBudget() {
                         <h1 className="text-3xl font-black text-white mb-2">Budget Governance</h1>
                         <p className="text-slate-400">Monitoring expenditure against planned capital allocations.</p>
                     </div>
-                    <button className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-brand-accent text-white font-bold shadow-xl shadow-brand-accent/30 hover:translate-y-[-2px] transition-all">
+                    <button className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white font-bold shadow-xl shadow-black/30 hover:translate-y-[-2px] transition-all">
                         <Plus className="w-5 h-5" />
                         Adjust Allocations
                     </button>
@@ -78,14 +81,12 @@ export default function FinanceBudget() {
                                                 )}>{burn.toFixed(1)}%</span>
                                             </div>
                                             <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${burn}%` }}
-                                                    transition={{ duration: 1.5, ease: "circOut" }}
+                                                <div
                                                     className={cn(
-                                                        "h-full rounded-full shadow-[0_0_15px_rgba(0,0,0,0.5)]",
-                                                        burn > 90 ? "bg-rose-500" : burn > 70 ? "bg-amber-500" : "bg-brand-accent"
+                                                        "h-full rounded-full shadow-[0_0_15px_rgba(0,0,0,0.5)] transition-[width] duration-1000 ease-out",
+                                                        burn > 90 ? "bg-rose-500" : burn > 70 ? "bg-amber-500" : "bg-[var(--accent)]"
                                                     )}
+                                                    style={{ width: mounted ? `${burn}%` : "0%" }}
                                                 />
                                             </div>
                                         </div>
@@ -96,7 +97,7 @@ export default function FinanceBudget() {
                     </div>
 
                     {/* Budget Breakdown Pie Chart */}
-                    <div className="bg-[#102B52] rounded-[32px] p-8 border border-white/10 shadow-premium flex flex-col">
+                    <div className="glass rounded-[32px] p-8 border border-white/10 shadow-premium flex flex-col">
                         <h3 className="text-xl font-bold text-white mb-6">Allocation Mix</h3>
                         <div className="h-[280px] w-full relative mb-8">
                             <ResponsiveContainer width="100%" height="100%">
@@ -113,7 +114,7 @@ export default function FinanceBudget() {
                                         ))}
                                     </Pie>
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: '#102B52', border: 'none', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}
+                                        contentStyle={{ backgroundColor: 'rgba(15, 39, 64, 0.9)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}
                                         itemStyle={{ color: '#fff' }}
                                     />
                                 </PieChart>
@@ -136,14 +137,14 @@ export default function FinanceBudget() {
                             ))}
                         </div>
 
-                        <div className="mt-8 p-4 rounded-2xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-between group cursor-pointer hover:bg-brand-accent/20 transition-all">
+                        <div className="mt-8 p-4 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 flex items-center justify-between group cursor-pointer hover:bg-[var(--accent)]/20 transition-all">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-brand-accent flex items-center justify-center text-white">
+                                <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center text-white">
                                     <Landmark className="w-4 h-4" />
                                 </div>
                                 <span className="text-xs font-bold text-white">Consolidated Audit</span>
                             </div>
-                            <ArrowUpRight className="w-4 h-4 text-brand-accent group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                            <ArrowUpRight className="w-4 h-4 text-[var(--accent-hover)] group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                         </div>
                     </div>
                 </div>

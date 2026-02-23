@@ -6,19 +6,19 @@ export const BRANDING = {
 
     branches: {
         "BR-001": {
-            name: "The Patiobela",
+            name: "Patiobela",
             location: "Entebbe Rd",
-            logo: "/pb-logo.png",
+            logo: "/background1.jpeg",
         },
         "BR-002": {
-            name: "The Maze Bistro",
-            location: "Kololo",
-            logo: "/mb-logo.png",
-        },
-        "BR-003": {
             name: "Eateroo",
             location: "Kiwatule",
-            logo: "/er-logo.png",
+            logo: "/background2.jpeg",
+        },
+        "BR-003": {
+            name: "Villa",
+            location: "—",
+            logo: "/background3%20copy.jpeg",
         },
     },
 };

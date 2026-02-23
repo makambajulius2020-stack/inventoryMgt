@@ -11,6 +11,7 @@ import { mockDB } from "../../mock-db";
 import type { AuthUser } from "@/lib/auth/types";
 import { normalizeRole, Role } from "@/lib/auth/roles";
 import { financeService } from "./finance.service";
+import type { ForecastPoint } from "./finance.service";
 
 const DELAY = 300;
 const delay = () => new Promise((r) => setTimeout(r, DELAY));
@@ -114,7 +115,12 @@ function assertReportScope(user: AuthUser, inputLocationId?: string): { location
     const role = normalizeRole(user.role);
     if (!role) throw new Error(`[RBAC] Role "${user.role}" is not recognized.`);
 
-    if (role === Role.CEO || role === Role.SYSTEM_AUDITOR) {
+    if (role === Role.CEO) {
+        if (inputLocationId) return { global: false, locationId: inputLocationId };
+        return { global: true };
+    }
+
+    if (role === Role.SYSTEM_AUDITOR) {
         if (inputLocationId) throw new Error("[Scope] Global roles must not request a single-location executive aggregation.");
         return { global: true };
     }
@@ -348,12 +354,19 @@ export const reportingService = {
     },
 
     // ── CEO: Revenue Trend ────────────────────────────────────────────────
-    async getRevenueTrend(): Promise<RevenueTrendPoint[]> {
+    async getRevenueTrend(user?: AuthUser, input?: { locationId?: string }): Promise<RevenueTrendPoint[]> {
         await delay();
+
+        const locationId = input?.locationId;
+        if (user && locationId) {
+            assertReportingRole(user);
+            assertReportScope(user, locationId);
+        }
 
         // Group ledger entries by date (day)
         const byDate: Record<string, { revenue: number; expenses: number }> = {};
         for (const e of mockDB.financialEntries) {
+            if (locationId && e.locationId !== locationId) continue;
             const day = e.createdAt.split("T")[0];
             if (!byDate[day]) byDate[day] = { revenue: 0, expenses: 0 };
 
@@ -521,5 +534,54 @@ export const reportingService = {
             pendingRequisitions: reqs.length,
             lowStockItems: inventorySnapshot.lowStockAlertsCount,
         };
+    },
+
+    async revenueForecast(user: AuthUser, input: { from: string; to: string; locationId?: string; horizonDays?: number }): Promise<ForecastPoint[]> {
+        assertReportingRole(user);
+        const scope = assertReportScope(user, input.locationId);
+        if (scope.global) {
+            // Global roles: do not allow locationId; use a synthetic global user for deterministic aggregation
+            const ceo: AuthUser = {
+                id: "system",
+                name: "System",
+                email: "system@local",
+                role: "CEO",
+                scope: { allLocations: true },
+            };
+            return financeService.revenueForecast(ceo, { from: input.from, to: input.to, horizonDays: input.horizonDays });
+        }
+        return financeService.revenueForecast(user, { from: input.from, to: input.to, horizonDays: input.horizonDays });
+    },
+
+    async expenseForecast(user: AuthUser, input: { from: string; to: string; locationId?: string; horizonDays?: number }): Promise<ForecastPoint[]> {
+        assertReportingRole(user);
+        const scope = assertReportScope(user, input.locationId);
+        if (scope.global) {
+            const ceo: AuthUser = {
+                id: "system",
+                name: "System",
+                email: "system@local",
+                role: "CEO",
+                scope: { allLocations: true },
+            };
+            return financeService.expenseForecast(ceo, { from: input.from, to: input.to, horizonDays: input.horizonDays });
+        }
+        return financeService.expenseForecast(user, { from: input.from, to: input.to, horizonDays: input.horizonDays });
+    },
+
+    async cashPositionForecast(user: AuthUser, input: { from: string; to: string; locationId?: string; horizonDays?: number }): Promise<ForecastPoint[]> {
+        assertReportingRole(user);
+        const scope = assertReportScope(user, input.locationId);
+        if (scope.global) {
+            const ceo: AuthUser = {
+                id: "system",
+                name: "System",
+                email: "system@local",
+                role: "CEO",
+                scope: { allLocations: true },
+            };
+            return financeService.cashPositionForecast(ceo, { from: input.from, to: input.to, horizonDays: input.horizonDays });
+        }
+        return financeService.cashPositionForecast(user, { from: input.from, to: input.to, horizonDays: input.horizonDays });
     },
 };

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { animate, useMotionValue, useTransform, motion } from "framer-motion";
 
 interface AnimatedCounterProps {
     value: number;
@@ -11,21 +10,33 @@ interface AnimatedCounterProps {
 }
 
 export function AnimatedCounter({ value, prefix = "", suffix = "", decimals = 0 }: AnimatedCounterProps) {
-    const count = useMotionValue(0);
-    const rounded = useTransform(count, (latest) => {
-        return prefix + latest.toLocaleString(undefined, {
+    const [display, setDisplay] = React.useState(() => {
+        return prefix + (0).toLocaleString(undefined, {
             minimumFractionDigits: decimals,
             maximumFractionDigits: decimals,
         }) + suffix;
     });
 
     useEffect(() => {
-        const controls = animate(count, value, {
-            duration: 1.5,
-            ease: "easeOut",
-        });
-        return controls.stop;
-    }, [value, count]);
+        const durationMs = 1200;
+        const start = performance.now();
+        const from = 0;
+        let rafId = 0;
 
-    return <motion.span>{rounded}</motion.span>;
+        const tick = (now: number) => {
+            const t = Math.min(1, (now - start) / durationMs);
+            const eased = 1 - Math.pow(1 - t, 3);
+            const current = from + (value - from) * eased;
+            setDisplay(prefix + current.toLocaleString(undefined, {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals,
+            }) + suffix);
+            if (t < 1) rafId = requestAnimationFrame(tick);
+        };
+
+        rafId = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(rafId);
+    }, [value, prefix, suffix, decimals]);
+
+    return <span>{display}</span>;
 }

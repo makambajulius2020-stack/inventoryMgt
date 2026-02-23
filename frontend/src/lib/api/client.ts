@@ -9,6 +9,7 @@ import { departmentService } from "./services/department.service";
 import { adminService } from "./services/admin.service";
 import { reportingService } from "./services/reporting.service";
 import { auditService } from "./services/audit.service";
+import { searchService } from "./services/search.service";
 
 /**
  * Enterprise API Client
@@ -28,6 +29,7 @@ export const api = {
   admin: adminService,
   reporting: reportingService,
   audit: auditService,
+  search: searchService,
 };
 
 export type ApiClient = typeof api;

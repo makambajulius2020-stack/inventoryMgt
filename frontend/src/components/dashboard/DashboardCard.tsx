@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,11 +25,9 @@ export function DashboardCard({
     className,
 }: DashboardCardProps) {
     return (
-        <motion.div
-            whileHover={{ y: -4 }}
-            transition={{ duration: 0.2 }}
+        <div
             className={cn(
-                "bg-brand-card/5 backdrop-blur-md rounded-2xl p-6 shadow-premium hover:bg-white/10 transition-all duration-300 border border-white/10",
+                "bg-brand-card/5 backdrop-blur-md rounded-2xl p-6 shadow-premium hover:bg-white/10 transition-all duration-300 border border-white/10 hover:-translate-y-1",
                 className
             )}
         >
@@ -48,8 +45,8 @@ export function DashboardCard({
                                 className={cn(
                                     "text-xs font-semibold px-2 py-1 rounded-full",
                                     trend.isPositive
-                                        ? "bg-emerald-50 text-emerald-600"
-                                        : "bg-rose-50 text-rose-600"
+                                        ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                                        : "bg-rose-500/10 text-rose-300 border border-rose-500/20"
                                 )}
                             >
                                 {trend.isPositive ? "+" : "-"}{Math.abs(trend.value)}%
@@ -71,6 +68,6 @@ export function DashboardCard({
                     </div>
                 )}
             </div>
-        </motion.div>
+        </div>
     );
 }

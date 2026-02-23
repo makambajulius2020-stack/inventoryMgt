@@ -45,6 +45,9 @@ export interface ExpenseRow {
     amount: number;
     description: string;
     date: string;
+    approvalStatus?: "SUBMITTED" | "APPROVED" | "REJECTED";
+    status?: "UNPAID" | "PAID";
+    paymentId?: string;
 }
 
 export interface PaymentRow {
@@ -70,6 +73,11 @@ export interface CashflowRow {
     inflow: number;
     outflow: number;
     net: number;
+}
+
+export interface ForecastPoint {
+    period: string;
+    value: number;
 }
 
 export interface InvoiceRow {
@@ -314,7 +322,33 @@ export const financeService = {
             amount: e.amount,
             description: e.description,
             date: e.date,
+            approvalStatus: e.approvalStatus ?? "SUBMITTED",
+            status: e.status ?? "UNPAID",
+            paymentId: e.paymentId,
         }));
+    },
+
+    async getPayments(user: AuthUser): Promise<PaymentRow[]> {
+        await delay();
+        const payments = hasGlobalScope(user)
+            ? mockDB.payments
+            : mockDB.payments.filter((p) => {
+                const inv = mockDB.vendorInvoices.find((i) => i.id === p.invoiceId);
+                if (!inv) return false;
+                return inv.locationId === user.scope.locationId;
+            });
+        return payments.map((p) => {
+            const inv = mockDB.vendorInvoices.find((i) => i.id === p.invoiceId);
+            return {
+                id: p.id,
+                invoiceId: p.invoiceId,
+                vendorName: inv ? resolveVendorName(inv.vendorId) : "Unknown",
+                amount: p.amount,
+                paymentMethod: resolvePaymentMethodName(p.paymentMethodId),
+                paidAt: p.paidAt,
+                reference: p.reference,
+            };
+        });
     },
 
     async createExpense(
@@ -339,6 +373,7 @@ export const financeService = {
                 amount: input.amount,
                 description: input.description,
                 date: ts.split("T")[0],
+                approvalStatus: "SUBMITTED" as const,
                 status: input.paymentMethodId ? ("PAID" as const) : ("UNPAID" as const),
                 paidAt: input.paymentMethodId ? ts : undefined,
                 paymentId: undefined as string | undefined,
@@ -396,6 +431,9 @@ export const financeService = {
                 amount: exp.amount,
                 description: exp.description,
                 date: exp.date,
+                approvalStatus: exp.approvalStatus,
+                status: exp.status,
+                paymentId: exp.paymentId,
             };
         }, {
             actorId: user.id,
@@ -403,6 +441,96 @@ export const financeService = {
             locationId: input.locationId,
             entityType: "EXPENSE",
             action: "CREATE",
+        });
+    },
+
+    async approveExpense(user: AuthUser, expenseId: string): Promise<void> {
+        return withAuditGuard(async (ctx) => {
+            assertCanMutate(user);
+            assertFinanceRole(user, [Role.FINANCE_MANAGER, Role.GENERAL_MANAGER]);
+            await delay();
+
+            const exp = mockDB.expenses.find((e) => e.id === expenseId);
+            if (!exp) throw new DomainError("Expense not found", { metadata: { expenseId } });
+            assertLocationAccess(user, exp.locationId);
+
+            const current = exp.approvalStatus ?? "SUBMITTED";
+            if (current !== "SUBMITTED") {
+                throw new LifecycleViolationError(`Cannot approve expense: approvalStatus is "${current}", must be "SUBMITTED".`, {
+                    metadata: { expenseId: exp.id, approvalStatus: current },
+                });
+            }
+
+            const before = structuredClone(exp);
+            const referenceChainId = getExistingTraceId("EXPENSE", exp.id) ?? makeTraceId("tr_fin");
+            ctx.referenceChainId = referenceChainId;
+            const ts = new Date().toISOString();
+
+            exp.approvalStatus = "APPROVED";
+
+            createAuditLog({
+                user,
+                entityType: "EXPENSE",
+                entityId: exp.id,
+                action: "TRANSITION",
+                changes: JSON.stringify({ approvalStatus: `${current}->APPROVED` }),
+                at: ts,
+                referenceChainId,
+                locationId: exp.locationId,
+                beforeState: before,
+                afterState: structuredClone(exp),
+            });
+        }, {
+            actorId: user.id,
+            actorRole: user.role,
+            locationId: user.scope.locationId,
+            entityType: "EXPENSE",
+            action: "APPROVE",
+        });
+    },
+
+    async rejectExpense(user: AuthUser, expenseId: string): Promise<void> {
+        return withAuditGuard(async (ctx) => {
+            assertCanMutate(user);
+            assertFinanceRole(user, [Role.FINANCE_MANAGER, Role.GENERAL_MANAGER]);
+            await delay();
+
+            const exp = mockDB.expenses.find((e) => e.id === expenseId);
+            if (!exp) throw new DomainError("Expense not found", { metadata: { expenseId } });
+            assertLocationAccess(user, exp.locationId);
+
+            const current = exp.approvalStatus ?? "SUBMITTED";
+            if (current !== "SUBMITTED") {
+                throw new LifecycleViolationError(`Cannot reject expense: approvalStatus is "${current}", must be "SUBMITTED".`, {
+                    metadata: { expenseId: exp.id, approvalStatus: current },
+                });
+            }
+
+            const before = structuredClone(exp);
+            const referenceChainId = getExistingTraceId("EXPENSE", exp.id) ?? makeTraceId("tr_fin");
+            ctx.referenceChainId = referenceChainId;
+            const ts = new Date().toISOString();
+
+            exp.approvalStatus = "REJECTED";
+
+            createAuditLog({
+                user,
+                entityType: "EXPENSE",
+                entityId: exp.id,
+                action: "TRANSITION",
+                changes: JSON.stringify({ approvalStatus: `${current}->REJECTED` }),
+                at: ts,
+                referenceChainId,
+                locationId: exp.locationId,
+                beforeState: before,
+                afterState: structuredClone(exp),
+            });
+        }, {
+            actorId: user.id,
+            actorRole: user.role,
+            locationId: user.scope.locationId,
+            entityType: "EXPENSE",
+            action: "REJECT",
         });
     },
 
@@ -416,6 +544,12 @@ export const financeService = {
         if (!exp) throw new DomainError("Expense not found", { metadata: { expenseId: input.expenseId } });
         assertLocationAccess(user, exp.locationId);
         if (exp.status === "PAID") throw new LifecycleViolationError("Expense is already PAID", { metadata: { expenseId: exp.id } });
+        const approvalStatus = exp.approvalStatus ?? "SUBMITTED";
+        if (approvalStatus !== "APPROVED") {
+            throw new LifecycleViolationError(`Cannot pay expense: approvalStatus is "${approvalStatus}", must be "APPROVED".`, {
+                metadata: { expenseId: exp.id, approvalStatus },
+            });
+        }
 
             const beforeExpense = structuredClone(exp);
             const referenceChainId = getExistingTraceId("EXPENSE", exp.id) ?? makeTraceId("tr_fin");
@@ -972,5 +1106,74 @@ export const financeService = {
                 percentage: total > 0 ? (amount / total) * 100 : 0,
             }))
             .sort((a, b) => b.amount - a.amount);
+    },
+
+    async revenueForecast(user: AuthUser, input: { from: string; to: string; horizonDays?: number }): Promise<ForecastPoint[]> {
+        await delay();
+        const horizonDays = input.horizonDays ?? 14;
+        const fromD = new Date(input.from).getTime();
+        const toD = new Date(input.to).getTime();
+        const days = Math.max(1, Math.ceil((toD - fromD) / (1000 * 60 * 60 * 24)));
+
+        const sales = scopeFilterByLocation(user, mockDB.sales).filter((s) => {
+            const t = new Date(s.soldAt).getTime();
+            return t >= fromD && t <= toD;
+        });
+
+        const totalRevenue = sales.reduce((s, r) => s + r.netAmount, 0);
+        const dailyAvg = totalRevenue / days;
+        const points: ForecastPoint[] = [];
+        for (let d = 1; d <= horizonDays; d++) {
+            const dt = new Date(toD + d * 24 * 60 * 60 * 1000);
+            points.push({ period: dt.toISOString().split("T")[0], value: Math.round(dailyAvg) });
+        }
+        return points;
+    },
+
+    async expenseForecast(user: AuthUser, input: { from: string; to: string; horizonDays?: number }): Promise<ForecastPoint[]> {
+        await delay();
+        const horizonDays = input.horizonDays ?? 14;
+        const fromD = new Date(input.from).getTime();
+        const toD = new Date(input.to).getTime();
+        const days = Math.max(1, Math.ceil((toD - fromD) / (1000 * 60 * 60 * 24)));
+
+        const expenses = scopeFilterByLocation(user, mockDB.expenses).filter((e) => {
+            const t = new Date(e.date).getTime();
+            return t >= fromD && t <= toD;
+        });
+
+        const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+        const dailyAvg = totalExpenses / days;
+        const points: ForecastPoint[] = [];
+        for (let d = 1; d <= horizonDays; d++) {
+            const dt = new Date(toD + d * 24 * 60 * 60 * 1000);
+            points.push({ period: dt.toISOString().split("T")[0], value: Math.round(dailyAvg) });
+        }
+        return points;
+    },
+
+    async cashPositionForecast(user: AuthUser, input: { from: string; to: string; horizonDays?: number }): Promise<ForecastPoint[]> {
+        await delay();
+        const horizonDays = input.horizonDays ?? 14;
+        const fromD = new Date(input.from).getTime();
+        const toD = new Date(input.to).getTime();
+        const days = Math.max(1, Math.ceil((toD - fromD) / (1000 * 60 * 60 * 24)));
+
+        const cashflow = await this.getCashflowSummary(user);
+        const filtered = cashflow.filter((c) => {
+            const t = new Date(c.period).getTime();
+            return t >= fromD && t <= toD;
+        });
+
+        const totalNet = filtered.reduce((s, r) => s + r.net, 0);
+        const dailyAvg = totalNet / days;
+
+        const currentPosition = filtered.reduce((s, r) => s + r.net, 0);
+        const points: ForecastPoint[] = [];
+        for (let d = 1; d <= horizonDays; d++) {
+            const dt = new Date(toD + d * 24 * 60 * 60 * 1000);
+            points.push({ period: dt.toISOString().split("T")[0], value: Math.round(currentPosition + dailyAvg * d) });
+        }
+        return points;
     },
 };

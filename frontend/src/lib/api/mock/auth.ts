@@ -1,18 +1,21 @@
 import type { AuthApi } from "@/lib/api/types";
 import { Role } from "@/lib/auth/roles";
 import type { AuthUser } from "@/lib/auth/types";
+import { mockDB } from "@/lib/mock-db";
 
-const BRANCH_CODE_TO_NAME: Record<string, string> = {
-  "pb-01": "The Patiobela",
-  "pb-02": "The Maze Kololo",
-  "er-01": "Eateroo",
+const BRANCH_CODE_TO_LOCATION_CODE: Record<string, string> = {
+  "pb": "PB01",
+  "mk": "MK01",
+  "wh": "WH01",
 };
 
-const BRANCH_CODE_TO_ID: Record<string, string> = {
-  "pb-01": "BR-001",
-  "pb-02": "BR-002",
-  "er-01": "BR-003",
-};
+function resolveLocationIdFromBranchCode(branchCode?: string) {
+  if (!branchCode) return undefined;
+  const key = branchCode.split("-")[0] ?? branchCode;
+  const locationCode = BRANCH_CODE_TO_LOCATION_CODE[key];
+  if (!locationCode) return undefined;
+  return mockDB.locations.find((l) => l.code === locationCode)?.id;
+}
 
 export const mockAuthApi: AuthApi = {
   async login({ email }) {
@@ -55,14 +58,15 @@ export const mockAuthApi: AuthApi = {
       finance: Role.FINANCE_MANAGER,
       procurement: Role.PROCUREMENT_OFFICER,
       store: Role.STORE_MANAGER,
+      controller: Role.STORE_CONTROLLER,
+      store_controller: Role.STORE_CONTROLLER,
       department_head: Role.DEPARTMENT_HEAD,
     };
 
     const role = (roleSlug && roleMap[roleSlug]) || Role.STORE_MANAGER;
-    const branchName = branchCode ? BRANCH_CODE_TO_NAME[branchCode] : undefined;
-    const branchId = branchCode ? BRANCH_CODE_TO_ID[branchCode] : null;
+    const locationId = resolveLocationIdFromBranchCode(branchCode);
 
-    if (!branchName && !isCeoEmail(lower)) {
+    if (!locationId && !isCeoEmail(lower)) {
       // Fallback for some legacy test accounts if any
     }
 
@@ -73,7 +77,7 @@ export const mockAuthApi: AuthApi = {
       role,
       scope: {
         allLocations: false,
-        locationId: branchId ?? undefined,
+        locationId,
         departmentId: undefined,
       },
     };

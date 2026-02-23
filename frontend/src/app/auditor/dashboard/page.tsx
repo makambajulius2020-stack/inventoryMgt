@@ -6,7 +6,6 @@ import {
     Database,
     Search,
     Filter,
-    Eye,
     FileText,
     Activity,
     ShieldCheck,
@@ -15,8 +14,10 @@ import {
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
+import { DashboardError } from "@/components/dashboard/DashboardStates";
 import { api } from "@/lib/api/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useGlobalDateFilters } from "@/contexts/GlobalDateFiltersContext";
 import { cn } from "@/lib/utils";
 import type { AuditTrailEntry, CrossLocationVariance } from "@/lib/api/services/reporting.service";
 
@@ -25,8 +26,10 @@ type VarianceRow = CrossLocationVariance & { id: string };
 export default function AuditorDashboard() {
     const [activeTab, setActiveTab] = useState<"logs" | "entities" | "financials">("logs");
     const { state } = useAuth();
+    const { filters } = useGlobalDateFilters();
     const [logs, setLogs] = useState<AuditTrailEntry[]>([]);
     const [variance, setVariance] = useState<CrossLocationVariance[]>([]);
+    const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(true);
     const [accessError, setAccessError] = useState<string | null>(null);
 
@@ -57,14 +60,74 @@ export default function AuditorDashboard() {
         load();
     }, [activeTab, state.user]);
 
+    const withinRange = (raw: string) => {
+        const t = new Date(raw).getTime();
+        if (Number.isNaN(t)) return false;
+        const fromTs = filters.fromDate ? new Date(filters.fromDate).getTime() : undefined;
+        const toTs = filters.toDate ? new Date(filters.toDate).getTime() : undefined;
+        if (fromTs !== undefined && t < fromTs) return false;
+        if (toTs !== undefined && t > toTs) return false;
+        return true;
+    };
+
+    const q = query.trim().toLowerCase();
+    const filteredLogs = logs
+        .filter((l) => withinRange(l.timestamp))
+        .filter((l) => {
+            if (filters.location === "ALL") return true;
+            return l.locationName === filters.location;
+        })
+        .filter((l) => {
+            if (!q) return true;
+            return (
+                l.entityId.toLowerCase().includes(q) ||
+                l.entityType.toLowerCase().includes(q) ||
+                l.action.toLowerCase().includes(q) ||
+                l.userName.toLowerCase().includes(q) ||
+                l.userRole.toLowerCase().includes(q)
+            );
+        })
+        .slice(0, 400);
+
+    const exportCsv = (filename: string, headers: string[], rows: (string | number)[][]) => {
+        const esc = (v: string | number) => {
+            const s = String(v ?? "");
+            const needsQuotes = /[\n\r,\"]/g.test(s);
+            const safe = s.replace(/\"/g, '""');
+            return needsQuotes ? `"${safe}"` : safe;
+        };
+        const csv = [headers.map(esc).join(","), ...rows.map((r) => r.map(esc).join(","))].join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleExport = () => {
+        const stamp = new Date().toISOString().slice(0, 10);
+        if (activeTab === "logs") {
+            exportCsv(
+                `audit_logs_${stamp}.csv`,
+                ["timestamp", "userName", "userRole", "action", "entityType", "entityId", "location"],
+                filteredLogs.map((l) => [l.timestamp, l.userName, l.userRole, l.action, l.entityType, l.entityId, l.locationName])
+            );
+        }
+        if (activeTab === "financials") {
+            exportCsv(
+                `cross_location_variance_${stamp}.csv`,
+                ["metric", "average", "maxVariance"],
+                varianceRows.map((v) => [v.metric, v.average, v.maxVariance])
+            );
+        }
+    };
+
     if (accessError) {
-        return (
-            <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
-                <Card title="Global Audit Vault" subtitle="Overview">
-                    <div className="p-6 text-sm font-bold text-rose-600">{accessError}</div>
-                </Card>
-            </div>
-        );
+        return <DashboardError title="Global Audit Vault" message={accessError} />;
     }
 
     return (
@@ -73,23 +136,23 @@ export default function AuditorDashboard() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
-                        <h1 className="text-3xl font-black text-[#001F3F] dark:text-white tracking-tighter uppercase">Global Audit Vault</h1>
-                        <div className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-md border border-amber-200 flex items-center gap-1">
+                        <h1 className="text-3xl font-black text-[var(--text-primary)] tracking-tighter uppercase">Global Audit Vault</h1>
+                        <div className="px-2 py-0.5 bg-amber-500/10 text-amber-300 text-[10px] font-black uppercase tracking-widest rounded-md border border-amber-500/20 flex items-center gap-1">
                             <Lock className="w-3 h-3" /> READ ONLY ACCESS
                         </div>
                     </div>
-                    <p className="text-slate-500 font-medium">Deep inspection and lifecycle integrity monitoring</p>
+                    <p className="text-[var(--text-secondary)] font-medium">Deep inspection and lifecycle integrity monitoring</p>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" size="sm" className="bg-white dark:bg-white/5 border-slate-200">
+                    <Button variant="outline" size="sm" className="bg-white/5 border-white/10" onClick={handleExport}>
                         <FileText className="w-4 h-4 mr-2" /> Export Audit Report (CSV)
                     </Button>
                 </div>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800 gap-8 overflow-x-auto">
+            <div className="flex border-b border-white/10 gap-8 overflow-x-auto">
                 <TabButton
                     active={activeTab === "logs"}
                     onClick={() => setActiveTab("logs")}
@@ -114,32 +177,34 @@ export default function AuditorDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card noPadding className="border-l-4 border-l-[#001F3F]">
                     <div className="p-6">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total System Events</p>
-                        <p className="text-2xl font-black text-[#001F3F] dark:text-white uppercase tracking-tighter">1,240,892</p>
+                        <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Total System Events</p>
+                        <p className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter">1,240,892</p>
                     </div>
                 </Card>
                 <Card noPadding className="border-l-4 border-l-teal-500">
                     <div className="p-6">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Entity Integrity Score</p>
+                        <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Entity Integrity Score</p>
                         <p className="text-2xl font-black text-teal-600 tracking-tighter">100.0%</p>
                     </div>
                 </Card>
                 <Card noPadding className="border-l-4 border-l-amber-500">
                     <div className="p-6">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Flagged Anomalies</p>
+                        <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Flagged Anomalies</p>
                         <p className="text-2xl font-black text-amber-600 tracking-tighter">0 PERMANENT</p>
                     </div>
                 </Card>
             </div>
 
             {/* Search & Filter Bar */}
-            <div className="flex items-center gap-4 bg-white dark:bg-[#00162a] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-4 glass p-4 rounded-2xl border border-white/10 shadow-sm">
                 <div className="flex-1 relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
                     <input
                         type="text"
-                        placeholder="Search by Entity ID, User ID, or Action Type..."
-                        className="w-full pl-11 pr-4 py-2.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-[#001F3F]/20 transition-all"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search logs"
+                        className="w-full pl-11 pr-4 py-2.5 bg-[var(--input)] border border-[var(--input-border)] rounded-xl text-sm font-medium text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--ring)]/20 transition-all"
                     />
                 </div>
                 <Button variant="ghost" size="sm">
@@ -152,24 +217,19 @@ export default function AuditorDashboard() {
                 <Card noPadding title="Immutable System Trails" subtitle="Every modification and access event across all branches">
                     <DataTable
                         loading={loading}
-                        data={logs}
+                        data={filteredLogs}
                         columns={[
-                            { header: "Timestamp", accessor: (l) => <span className="text-slate-500 font-bold">{new Date(l.timestamp).toLocaleString()}</span> },
-                            { header: "Actor", accessor: "userName", className: "font-black text-[#001F3F] dark:text-teal-400" },
-                            { header: "Action", accessor: (l) => <span className="px-2 py-1 rounded bg-slate-100 dark:bg-white/5 text-[10px] font-black uppercase">{l.action}</span> },
-                            { header: "Entity", accessor: "entityType" },
-                            { header: "Entity ID", accessor: "entityId", className: "font-mono text-xs" },
-                            {
-                                header: "Inspector",
-                                accessor: () => (
-                                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                                        <Eye className="w-4 h-4" />
-                                    </Button>
-                                )
-                            }
+                            { header: "Timestamp", accessor: (l) => <span className="text-[var(--text-primary)] font-bold">{new Date(l.timestamp).toLocaleString()}</span> },
+                            { header: "Actor", accessor: (l) => <span className="font-black text-[var(--text-primary)]">{l.userName}</span>, className: "text-[var(--text-primary)]" },
+                            { header: "Role", accessor: (l) => <span className="text-[var(--text-primary)] font-bold">{l.userRole}</span>, className: "text-[var(--text-primary)]" },
+                            { header: "Action", accessor: (l) => <span className="px-2 py-1 rounded bg-white/10 border border-white/15 text-[10px] font-black uppercase text-[var(--text-primary)]">{l.action}</span> },
+                            { header: "Entity", accessor: (l) => <span className="text-[var(--text-primary)] font-bold">{l.entityType}</span> },
+                            { header: "Entity ID", accessor: (l) => <span className="font-mono text-xs text-[var(--text-primary)] font-bold">{l.entityId}</span> },
+                            { header: "Location", accessor: (l) => <span className="text-[var(--text-primary)] font-bold">{l.locationName}</span> },
                         ]}
+                        emptyMessage="No audit records found"
                     />
-                    <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-black/20 flex justify-between items-center text-[10px] font-black text-slate-500 uppercase">
+                    <div className="p-4 border-t border-white/10 bg-white/5 flex justify-between items-center text-[10px] font-black text-[var(--text-muted)] uppercase">
                         <span>Showing top 50 global records</span>
                         <div className="flex items-center gap-4">
                             <button className="hover:text-teal-600">Previous</button>
@@ -218,10 +278,11 @@ export default function AuditorDashboard() {
                             loading={loading}
                             data={varianceRows}
                             columns={[
-                                { header: "Metric", accessor: (r: VarianceRow) => r.metric, className: "font-black text-[#001F3F] dark:text-white" },
-                                { header: "Average", accessor: (r: VarianceRow) => <span className="font-bold">{Number(r.average).toLocaleString()}</span> },
-                                { header: "Max Variance", accessor: (r: VarianceRow) => <span className="font-bold">{Number(r.maxVariance).toLocaleString()}</span> },
+                                { header: "Metric", accessor: (r: VarianceRow) => r.metric, className: "font-black text-[var(--text-primary)]" },
+                                { header: "Average", accessor: (r: VarianceRow) => <span className="font-black text-[var(--text-primary)]">{Number(r.average).toLocaleString()}</span>, className: "text-[var(--text-primary)]" },
+                                { header: "Max Variance", accessor: (r: VarianceRow) => <span className="font-black text-[var(--text-primary)]">{Number(r.maxVariance).toLocaleString()}</span>, className: "text-[var(--text-primary)]" },
                             ]}
+                            emptyMessage="No variance data available"
                         />
                     </Card>
                 </div>
@@ -237,8 +298,8 @@ function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; on
             className={cn(
                 "flex items-center gap-3 py-4 border-b-2 transition-all",
                 active
-                    ? "border-[#001F3F] text-[#001F3F] dark:border-white dark:text-white font-black"
-                    : "border-transparent text-slate-400 hover:text-slate-600 font-bold"
+                    ? "border-[var(--accent-hover)] text-[var(--text-primary)] font-black"
+                    : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] font-bold"
             )}
         >
             <Icon className="w-4 h-4" />
@@ -251,7 +312,7 @@ function EntityLink({ label, active }: { label: string; active: boolean }) {
     return (
         <button className={cn(
             "w-full text-left px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-tight transition-all",
-            active ? "bg-[#001F3F] text-white" : "text-slate-600 hover:bg-slate-50 dark:hover:bg-white/5"
+            active ? "bg-white/10 text-[var(--text-primary)] border border-white/10" : "text-[var(--text-secondary)] hover:bg-white/5"
         )}>
             {label}
         </button>

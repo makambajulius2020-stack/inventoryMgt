@@ -13,7 +13,7 @@ export type GlobalDateFilters = {
 
 type GlobalDateFiltersContextValue = {
   filters: GlobalDateFilters;
-  setFilters: (next: GlobalDateFilters) => void;
+  setFilters: React.Dispatch<React.SetStateAction<GlobalDateFilters>>;
 };
 
 const GlobalDateFiltersContext = createContext<GlobalDateFiltersContextValue | null>(null);

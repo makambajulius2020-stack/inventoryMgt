@@ -171,6 +171,14 @@ function makeTraceId(prefix = "tr"): string {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function getExistingTraceId(entityType: string, entityId: string): string | undefined {
+    for (let i = mockDB.auditLogs.length - 1; i >= 0; i--) {
+        const log = mockDB.auditLogs[i];
+        if (log.entityType === entityType && log.entityId === entityId && log.referenceChainId) return log.referenceChainId;
+    }
+    return undefined;
+}
+
 function createAuditLog(params: {
     user: AuthUser;
     entityType: string;
@@ -514,8 +522,17 @@ export const inventoryService = {
                 itemId: input.itemId,
                 quantity: input.quantity,
                 status: "APPROVED",
+                requestedById: user.id,
                 requestedAt: ts,
                 completedAt: ts,
+            });
+
+            // Keep transfer items in sync for line-based UI
+            mockDB.stockTransferItems.push({
+                id: `sti_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                stockTransferId: transferId,
+                itemId: input.itemId,
+                quantity: input.quantity,
             });
 
             const unitCost = latestUnitCost(input.sourceLocationId, input.itemId);
@@ -582,6 +599,277 @@ export const inventoryService = {
         });
     },
 
+    // ── MUTATION: Request Stock Transfer (no movements yet) ───────────────
+    async requestStockTransfer(
+        user: AuthUser,
+        input: { sourceLocationId: string; destinationLocationId: string; items: { itemId: string; quantity: number }[] }
+    ): Promise<{ transferId: string }> {
+        return withAuditGuard(async (ctx) => {
+            assertNotCeo(user);
+            assertCanMutateInventory(user, [Role.STORE_MANAGER]);
+
+            if (!input.items || input.items.length === 0) {
+                throw new DomainError("Transfer must have at least one line item", { metadata: { itemCount: input.items?.length ?? 0 } });
+            }
+
+            assertLocationAccess(user, input.sourceLocationId);
+            await delay();
+
+            const totalQty = input.items.reduce((s, i) => s + i.quantity, 0);
+            if (totalQty <= 0) throw new DomainError("Total transfer quantity must be greater than 0", { metadata: { totalQty } });
+
+            const ts = new Date().toISOString();
+            const transferId = `stx_${Date.now()}`;
+            ctx.referenceChainId = makeTraceId("tr_inv");
+
+            const first = input.items[0];
+            mockDB.stockTransfers.push({
+                id: transferId,
+                sourceLocationId: input.sourceLocationId,
+                destinationLocationId: input.destinationLocationId,
+                itemId: first.itemId,
+                quantity: first.quantity,
+                status: "PENDING",
+                requestedById: user.id,
+                requestedAt: ts,
+            });
+
+            for (const line of input.items) {
+                if (line.quantity <= 0) throw new DomainError("Transfer line quantity must be greater than 0", { metadata: { itemId: line.itemId, quantity: line.quantity } });
+                mockDB.stockTransferItems.push({
+                    id: `sti_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                    stockTransferId: transferId,
+                    itemId: line.itemId,
+                    quantity: line.quantity,
+                });
+            }
+
+            createAuditLog({
+                user,
+                entityType: "STOCK_TRANSFER",
+                entityId: transferId,
+                action: "CREATE",
+                changes: JSON.stringify(input),
+                at: ts,
+                referenceChainId: ctx.referenceChainId,
+                locationId: input.sourceLocationId,
+                beforeState: null,
+                afterState: structuredClone(mockDB.stockTransfers.find((t) => t.id === transferId)),
+            });
+
+            return { transferId };
+        }, {
+            actorId: user.id,
+            actorRole: user.role,
+            locationId: input.sourceLocationId,
+            entityType: "STOCK_TRANSFER",
+            action: "REQUEST",
+        });
+    },
+
+    // ── MUTATION: Approve Stock Transfer (no movements yet) ───────────────
+    async approveStockTransfer(user: AuthUser, transferId: string): Promise<void> {
+        return withAuditGuard(async (ctx) => {
+            assertNotCeo(user);
+            assertCanMutateInventory(user, [Role.STORE_MANAGER]);
+            await delay();
+
+            const t = mockDB.stockTransfers.find((x) => x.id === transferId);
+            if (!t) throw new DomainError("Stock transfer not found", { metadata: { transferId } });
+            assertLocationAccess(user, t.sourceLocationId);
+
+            if (t.status !== "PENDING") {
+                throw new DomainError("Only PENDING transfers can be approved", { metadata: { transferId, status: t.status } });
+            }
+
+            const before = structuredClone(t);
+            t.status = "APPROVED";
+            const ts = new Date().toISOString();
+            ctx.referenceChainId = getExistingTraceId("STOCK_TRANSFER", t.id) ?? makeTraceId("tr_inv");
+
+            createAuditLog({
+                user,
+                entityType: "STOCK_TRANSFER",
+                entityId: t.id,
+                action: "TRANSITION",
+                changes: JSON.stringify({ status: "PENDING->APPROVED" }),
+                at: ts,
+                referenceChainId: ctx.referenceChainId,
+                locationId: t.sourceLocationId,
+                beforeState: before,
+                afterState: structuredClone(t),
+            });
+        }, {
+            actorId: user.id,
+            actorRole: user.role,
+            locationId: user.scope.locationId,
+            entityType: "STOCK_TRANSFER",
+            action: "APPROVE",
+        });
+    },
+
+    // ── MUTATION: Reject Stock Transfer (no movements) ────────────────────
+    async rejectStockTransfer(user: AuthUser, transferId: string): Promise<void> {
+        return withAuditGuard(async (ctx) => {
+            assertNotCeo(user);
+            assertCanMutateInventory(user, [Role.STORE_MANAGER]);
+            await delay();
+
+            const t = mockDB.stockTransfers.find((x) => x.id === transferId);
+            if (!t) throw new DomainError("Stock transfer not found", { metadata: { transferId } });
+            assertLocationAccess(user, t.sourceLocationId);
+
+            if (t.status !== "PENDING") {
+                throw new DomainError("Only PENDING transfers can be rejected", { metadata: { transferId, status: t.status } });
+            }
+
+            const before = structuredClone(t);
+            t.status = "REJECTED";
+            const ts = new Date().toISOString();
+            ctx.referenceChainId = getExistingTraceId("STOCK_TRANSFER", t.id) ?? makeTraceId("tr_inv");
+
+            createAuditLog({
+                user,
+                entityType: "STOCK_TRANSFER",
+                entityId: t.id,
+                action: "TRANSITION",
+                changes: JSON.stringify({ status: "PENDING->REJECTED" }),
+                at: ts,
+                referenceChainId: ctx.referenceChainId,
+                locationId: t.sourceLocationId,
+                beforeState: before,
+                afterState: structuredClone(t),
+            });
+        }, {
+            actorId: user.id,
+            actorRole: user.role,
+            locationId: user.scope.locationId,
+            entityType: "STOCK_TRANSFER",
+            action: "REJECT",
+        });
+    },
+
+    // ── MUTATION: Complete Stock Transfer (creates movements) ─────────────
+    async completeStockTransfer(user: AuthUser, transferId: string): Promise<void> {
+        return withAuditGuard(async (ctx) => {
+            assertNotCeo(user);
+            assertCanMutateInventory(user, [Role.STORE_MANAGER]);
+            await delay();
+
+            const t = mockDB.stockTransfers.find((x) => x.id === transferId);
+            if (!t) throw new DomainError("Stock transfer not found", { metadata: { transferId } });
+            assertLocationAccess(user, t.sourceLocationId);
+
+            if (t.status !== "APPROVED") {
+                throw new DomainError("Only APPROVED transfers can be completed", { metadata: { transferId, status: t.status } });
+            }
+            if (t.completedAt) {
+                throw new DomainError("Transfer is already completed", { metadata: { transferId, completedAt: t.completedAt } });
+            }
+
+            const lines = mockDB.stockTransferItems.filter((i) => i.stockTransferId === transferId);
+            const items = lines.length > 0 ? lines : [{ id: "_fallback", stockTransferId: transferId, itemId: t.itemId, quantity: t.quantity }];
+
+            // Validate: sufficient stock exists for each line at source
+            const tempUser: AuthUser = hasGlobalScope(user)
+                ? user
+                : ({ ...user, scope: { ...user.scope, locationId: t.sourceLocationId } } as AuthUser);
+            const balances = computeLocationBalances(tempUser);
+            for (const line of items) {
+                const key = `${t.sourceLocationId}::${line.itemId}`;
+                const onHand = balances.get(key)?.onHand ?? 0;
+                if (onHand < line.quantity) {
+                    throw new DomainError("Insufficient stock to transfer", {
+                        metadata: { transferId, itemId: line.itemId, onHand, requested: line.quantity },
+                    });
+                }
+            }
+
+            const referenceChainId = getExistingTraceId("STOCK_TRANSFER", t.id) ?? makeTraceId("tr_inv");
+            ctx.referenceChainId = referenceChainId;
+
+            const ts = new Date().toISOString();
+            const before = structuredClone(t);
+
+            for (const line of items) {
+                const unitCost = latestUnitCost(t.sourceLocationId, line.itemId);
+                const outId = `mov_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_to`;
+                const inId = `mov_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_ti`;
+
+                mockDB.stockMovements.push({
+                    id: outId,
+                    locationId: t.sourceLocationId,
+                    inventoryItemId: line.itemId,
+                    type: "TRANSFER_OUT",
+                    quantity: line.quantity,
+                    unitCost,
+                    referenceType: "STOCK_TRANSFER",
+                    referenceId: transferId,
+                    createdAt: ts,
+                    createdBy: user.id,
+                });
+                createAuditLog({
+                    user,
+                    entityType: "StockMovement",
+                    entityId: outId,
+                    action: "CREATE",
+                    changes: JSON.stringify({ transferId, type: "TRANSFER_OUT", itemId: line.itemId, quantity: line.quantity }),
+                    at: ts,
+                    referenceChainId,
+                    locationId: t.sourceLocationId,
+                    beforeState: null,
+                    afterState: structuredClone(mockDB.stockMovements.find((m) => m.id === outId)),
+                });
+
+                mockDB.stockMovements.push({
+                    id: inId,
+                    locationId: t.destinationLocationId,
+                    inventoryItemId: line.itemId,
+                    type: "TRANSFER_IN",
+                    quantity: line.quantity,
+                    unitCost,
+                    referenceType: "STOCK_TRANSFER",
+                    referenceId: transferId,
+                    createdAt: ts,
+                    createdBy: user.id,
+                });
+                createAuditLog({
+                    user,
+                    entityType: "StockMovement",
+                    entityId: inId,
+                    action: "CREATE",
+                    changes: JSON.stringify({ transferId, type: "TRANSFER_IN", itemId: line.itemId, quantity: line.quantity }),
+                    at: ts,
+                    referenceChainId,
+                    locationId: t.destinationLocationId,
+                    beforeState: null,
+                    afterState: structuredClone(mockDB.stockMovements.find((m) => m.id === inId)),
+                });
+            }
+
+            t.completedAt = ts;
+
+            createAuditLog({
+                user,
+                entityType: "STOCK_TRANSFER",
+                entityId: t.id,
+                action: "TRANSITION",
+                changes: JSON.stringify({ status: "APPROVED->COMPLETED" }),
+                at: ts,
+                referenceChainId,
+                locationId: t.sourceLocationId,
+                beforeState: before,
+                afterState: structuredClone(t),
+            });
+        }, {
+            actorId: user.id,
+            actorRole: user.role,
+            locationId: user.scope.locationId,
+            entityType: "STOCK_TRANSFER",
+            action: "COMPLETE",
+        });
+    },
+
     // ── MUTATION: Issue to Department (ledger) ────────────────────────────
     async issueToDepartment(
         user: AuthUser,
@@ -589,7 +877,7 @@ export const inventoryService = {
     ): Promise<{ movementId: string }> {
         return withAuditGuard(async (ctx) => {
             assertNotCeo(user);
-            assertCanMutateInventory(user, [Role.DEPARTMENT_HEAD]);
+            assertCanMutateInventory(user, [Role.DEPARTMENT_HEAD, Role.STORE_MANAGER]);
 
             if (input.quantity <= 0) {
                 throw new DomainError("Issue quantity must be greater than 0", {

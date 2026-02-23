@@ -3,6 +3,7 @@ import { RoleName } from "./types";
 const ROLE_PRIORITY: RoleName[] = [
   "CEO",
   "SYSTEM_AUDITOR",
+  "STORE_CONTROLLER",
   "GENERAL_MANAGER",
   "FINANCE_MANAGER",
   "PROCUREMENT_OFFICER",
@@ -23,6 +24,7 @@ export function getLandingRouteForRoles(roles: string[]): string {
   const landingMap: Record<RoleName, string> = {
     CEO: "/ceo/dashboard",
     SYSTEM_AUDITOR: "/auditor/dashboard",
+    STORE_CONTROLLER: "/store-controller/dashboard",
     GENERAL_MANAGER: "/gm/dashboard",
     FINANCE_MANAGER: "/finance/dashboard",
     PROCUREMENT_OFFICER: "/procurement/dashboard",
@@ -37,6 +39,7 @@ export function getRolePrefix(role: RoleName): string {
   const prefixMap: Record<RoleName, string> = {
     CEO: "ceo",
     SYSTEM_AUDITOR: "auditor",
+    STORE_CONTROLLER: "store-controller",
     GENERAL_MANAGER: "gm",
     FINANCE_MANAGER: "finance",
     PROCUREMENT_OFFICER: "procurement",

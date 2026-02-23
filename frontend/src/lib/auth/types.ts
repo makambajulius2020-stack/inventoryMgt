@@ -5,7 +5,8 @@ export type RoleName =
   | "DEPARTMENT_HEAD"
   | "PROCUREMENT_OFFICER"
   | "STORE_MANAGER"
-  | "FINANCE_MANAGER";
+  | "FINANCE_MANAGER"
+  | "STORE_CONTROLLER";
 
 export type UserScope = {
   allLocations: boolean;

@@ -9,6 +9,7 @@ type AuthContextValue = {
   state: AuthState;
   login: (session: LoginResponseDTO) => void;
   logout: () => void;
+  setActiveLocation: (locationId: string) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -41,7 +42,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ token: null, user: null, roles: [], allowedLocations: [] });
   }, []);
 
-  const value = useMemo<AuthContextValue>(() => ({ state, login, logout }), [state, login, logout]);
+  const setActiveLocation = useCallback((locationId: string) => {
+    setState((prev) => {
+      if (!prev.user) return prev;
+
+      const canSelectAll = prev.user.scope.allLocations;
+      const nextIsAll = locationId === "ALL";
+      if (nextIsAll && !canSelectAll) return prev;
+
+      return {
+        ...prev,
+        user: {
+          ...prev.user,
+          scope: nextIsAll
+            ? { ...prev.user.scope, allLocations: true, locationId: undefined }
+            : { ...prev.user.scope, allLocations: false, locationId },
+        },
+      };
+    });
+  }, []);
+
+  const value = useMemo<AuthContextValue>(() => ({ state, login, logout, setActiveLocation }), [state, login, logout, setActiveLocation]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

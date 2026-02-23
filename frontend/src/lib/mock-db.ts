@@ -97,6 +97,7 @@ export interface StockTransfer {
     itemId: string;
     quantity: number;
     status: LifecycleStatus;
+    requestedById?: string;
     requestedAt: string;
     completedAt?: string;
 }
@@ -207,6 +208,7 @@ export interface Expense {
     amount: number;
     description: string;
     date: string;
+    approvalStatus?: "SUBMITTED" | "APPROVED" | "REJECTED";
     status?: "UNPAID" | "PAID";
     paidAt?: string;
     paymentId?: string;
@@ -352,8 +354,8 @@ const COMPANY: Company = {
 };
 
 const LOCATIONS: Location[] = [
-    { id: makeId("loc", "7c3c6d46-0dc1-4d7f-a2f1-1c0a9aa8b101"), companyId: COMPANY.id, name: "The Patiobela", code: "PB01", type: "BRANCH", address: "Entebbe Rd", status: "ACTIVE" },
-    { id: makeId("loc", "5f3c5c1c-72ed-4ce0-bd5f-402ec946f102"), companyId: COMPANY.id, name: "The Maze Kololo", code: "MK01", type: "BRANCH", address: "Kololo Hill Dr", status: "ACTIVE" },
+    { id: makeId("loc", "7c3c6d46-0dc1-4d7f-a2f1-1c0a9aa8b101"), companyId: COMPANY.id, name: "Patiobella", code: "PB01", type: "BRANCH", address: "Entebbe Rd", status: "ACTIVE" },
+    { id: makeId("loc", "5f3c5c1c-72ed-4ce0-bd5f-402ec946f102"), companyId: COMPANY.id, name: "Eateroo", code: "EA01", type: "BRANCH", address: "Kololo Hill Dr", status: "ACTIVE" },
     { id: makeId("loc", "b32c3e4e-5cb0-4d7e-9a39-1b24f16d2103"), companyId: COMPANY.id, name: "Central Warehouse", code: "WH01", type: "WAREHOUSE", address: "Industrial Area", status: "ACTIVE" },
 ];
 
@@ -383,6 +385,7 @@ const USERS: User[] = [
     { id: makeId("usr", "dbe0a1fb-2a42-4a6e-b008-2eeab0c00004"), name: "DH Kitchen PB", email: "dh.kitchen.pb@company.com", role: "DEPARTMENT_HEAD", locationId: LOCATIONS[0].id, departmentId: DEPARTMENTS[0].id, status: "ACTIVE" },
     { id: makeId("usr", "dbe0a1fb-2a42-4a6e-b008-2eeab0c00005"), name: "Proc Officer PB", email: "proc.pb@company.com", role: "PROCUREMENT_OFFICER", locationId: LOCATIONS[0].id, status: "ACTIVE" },
     { id: makeId("usr", "dbe0a1fb-2a42-4a6e-b008-2eeab0c00006"), name: "Store Manager PB", email: "store.pb@company.com", role: "STORE_MANAGER", locationId: LOCATIONS[0].id, status: "ACTIVE" },
+    { id: makeId("usr", "dbe0a1fb-2a42-4a6e-b008-2eeab0c00008"), name: "Store Controller PB", email: "controller.pb@company.com", role: "STORE_CONTROLLER", locationId: LOCATIONS[0].id, status: "ACTIVE" },
     { id: makeId("usr", "dbe0a1fb-2a42-4a6e-b008-2eeab0c00007"), name: "Finance Manager PB", email: "finance.pb@company.com", role: "FINANCE_MANAGER", locationId: LOCATIONS[0].id, status: "ACTIVE" },
     { id: makeId("usr", "dbe0a1fb-2a42-4a6e-b008-2eeab0c00011"), name: "DH Bar PB", email: "dh.bar.pb@company.com", role: "DEPARTMENT_HEAD", locationId: LOCATIONS[0].id, departmentId: DEPARTMENTS[1].id, status: "ACTIVE" },
     // Maze Kololo staff
@@ -580,9 +583,9 @@ const SALE_ITEMS: SaleItem[] = [
 // --- STOCK TRANSFERS ---
 
 const STOCK_TRANSFERS: StockTransfer[] = [
-    { id: makeId("stx", "001"), sourceLocationId: LOCATIONS[2].id, destinationLocationId: LOCATIONS[0].id, itemId: ITEMS[0].id, quantity: 20, status: "APPROVED", requestedAt: "2026-02-16T08:00:00Z", completedAt: "2026-02-16T14:00:00Z" },
-    { id: makeId("stx", "002"), sourceLocationId: LOCATIONS[2].id, destinationLocationId: LOCATIONS[1].id, itemId: ITEMS[2].id, quantity: 15, status: "PENDING", requestedAt: "2026-02-18T09:00:00Z" },
-    { id: makeId("stx", "003"), sourceLocationId: LOCATIONS[0].id, destinationLocationId: LOCATIONS[1].id, itemId: ITEMS[7].id, quantity: 50, status: "APPROVED", requestedAt: "2026-02-15T10:00:00Z", completedAt: "2026-02-15T16:00:00Z" },
+    { id: makeId("stx", "001"), sourceLocationId: LOCATIONS[2].id, destinationLocationId: LOCATIONS[0].id, itemId: ITEMS[0].id, quantity: 20, status: "APPROVED", requestedById: USERS[5].id, requestedAt: "2026-02-16T08:00:00Z", completedAt: "2026-02-16T14:00:00Z" },
+    { id: makeId("stx", "002"), sourceLocationId: LOCATIONS[2].id, destinationLocationId: LOCATIONS[1].id, itemId: ITEMS[2].id, quantity: 15, status: "PENDING", requestedById: USERS[5].id, requestedAt: "2026-02-18T09:00:00Z" },
+    { id: makeId("stx", "003"), sourceLocationId: LOCATIONS[0].id, destinationLocationId: LOCATIONS[1].id, itemId: ITEMS[7].id, quantity: 50, status: "APPROVED", requestedById: USERS[5].id, requestedAt: "2026-02-15T10:00:00Z", completedAt: "2026-02-15T16:00:00Z" },
 ];
 
 const STOCK_TRANSFER_ITEMS: StockTransferItem[] = [

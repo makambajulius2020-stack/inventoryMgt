@@ -80,7 +80,7 @@ export function DataTable<T extends { id: string | number }>({
                                         className={cn(
                                             "px-4 py-3 text-[10px] font-bold uppercase tracking-widest",
                                             "text-[var(--text-muted)] border-b border-[var(--border-subtle)]",
-                                            "bg-[var(--surface-muted)]",
+                                            "bg-[var(--surface-muted)] sticky top-0 z-10",
                                             col.sortable && "cursor-pointer select-none hover:text-[var(--text-secondary)]",
                                             col.className,
                                         )}
@@ -110,6 +110,7 @@ export function DataTable<T extends { id: string | number }>({
                                 onClick={() => onRowClick?.(item)}
                                 className={cn(
                                     "border-b border-[var(--border-subtle)] transition-colors",
+                                    i % 2 === 0 ? "bg-[color:var(--surface-muted)]/20" : "bg-transparent",
                                     "hover:bg-[var(--surface-raised)]",
                                     onRowClick && "cursor-pointer",
                                 )}
