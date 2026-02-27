@@ -50,7 +50,7 @@ export default function LoginPage() {
     setEmail(emailStr);
     setError(null);
     setSubmitting(true);
-    setTimeout(async () => {
+    (async () => {
       try {
         logout();
         const session = await api.auth.login({ email: emailStr, password: "password123" });
@@ -60,7 +60,7 @@ export default function LoginPage() {
         setError(err instanceof Error ? err.message : "Login failed");
         setSubmitting(false);
       }
-    }, 500);
+    })();
   };
 
   return (

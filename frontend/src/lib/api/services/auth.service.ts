@@ -3,7 +3,7 @@ import { AuthUser, LoginResponseDTO } from "../../auth/types";
 import { normalizeRole } from "../../auth/roles";
 import { AuthorizationError, DomainError } from "@/lib/runtime/errors";
 
-const DELAY = 600;
+const DELAY = 0;
 
 export const authService = {
     async login({ email }: { email: string; password: string }): Promise<LoginResponseDTO> {

@@ -21,6 +21,10 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
+    const hideLocation = React.useMemo(() => {
+        return pathname.startsWith("/ceo");
+    }, [pathname]);
+
     const locationOptions = React.useMemo(() => {
         if (state.allowedLocations.includes("ALL")) {
             const branchIds = mockDB.locations
@@ -69,6 +73,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <GlobalFilterBar
                     filters={filters}
                     locations={locationOptions}
+                    hideLocation={hideLocation}
                     onChange={(next) => {
                         setFilters(next);
                         if (next.location !== filters.location) {

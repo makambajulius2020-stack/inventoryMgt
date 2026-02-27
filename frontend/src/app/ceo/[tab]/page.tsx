@@ -50,17 +50,6 @@ const TAB_MAP: Record<string, TabConfig> = {
   },
 };
 
-const CEO_TABS = [
-  { href: "/ceo/dashboard", label: "Executive Overview" },
-  { href: "/ceo/financial-intelligence", label: "Financial Intelligence" },
-  { href: "/ceo/operational-overview", label: "Operational Overview" },
-  { href: "/ceo/procurement-overview", label: "Procurement Overview" },
-  { href: "/ceo/inventory-status", label: "Inventory Status" },
-  { href: "/ceo/sales-analytics", label: "Sales Analytics" },
-  { href: "/ceo/audit-controls", label: "Audit & Controls" },
-  { href: "/ceo/reports", label: "Reports & Exports" },
-];
-
 type APAgingSummaryRow = {
   id: string;
   current: number;
@@ -311,74 +300,56 @@ export default function CeoTabPage() {
 
   return (
     <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      {!config && <DashboardError title="CEO Portal" message="Tab not found" />}
-      {config && loading && <DashboardLoading titleWidthClassName="w-1/3" />}
-      {config && !loading && error && <DashboardError title={config.title} message={error} />}
-
       {config && !loading && !error && (
         <>
-      <div className="overflow-x-auto">
-        <div className="flex gap-2 min-w-max border-b border-[var(--border-subtle)] pb-2">
-          {CEO_TABS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={item.href.endsWith(`/${tab}`) ? "px-3 py-2 rounded-xl bg-[var(--surface-raised)] text-[var(--text-primary)] text-xs font-black uppercase tracking-wider" : "px-3 py-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-black uppercase tracking-wider"}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      </div>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-3xl font-black text-[var(--text-primary)] tracking-tighter uppercase">{config.title}</h1>
+              <p className="text-[var(--text-secondary)] font-medium">{config.subtitle}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="h-9 px-3 rounded-xl bg-[var(--input)] border border-[var(--input-border)] inline-flex items-center gap-2 text-[var(--text-muted)]">
+                <Search className="w-4 h-4" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Quick search" className="bg-transparent outline-none text-sm text-[var(--text-primary)]" />
+              </label>
+              <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" />Export</Button>
+            </div>
+          </div>
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-[var(--text-primary)] tracking-tighter uppercase">{config.title}</h1>
-          <p className="text-[var(--text-secondary)] font-medium">{config.subtitle}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="h-9 px-3 rounded-xl bg-[var(--input)] border border-[var(--input-border)] inline-flex items-center gap-2 text-[var(--text-muted)]">
-            <Search className="w-4 h-4" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Quick search" className="bg-transparent outline-none text-sm text-[var(--text-primary)]" />
-          </label>
-          <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" />Export</Button>
-        </div>
-      </div>
-
-      {tab === "financial-intelligence" ? (
-        <>
-          <KpiGrid className="lg:grid-cols-5">
-            <KpiCard title="Branch" value={selectedLocationName} subtitle="Scope" tone="default" />
-            <KpiCard title="Total AP" value={`UGX ${fiKpis.totalAp.toLocaleString()}`} subtitle="Register" tone="accent" />
-            <KpiCard title="Outstanding" value={`UGX ${fiKpis.totalOutstanding.toLocaleString()}`} subtitle="Unpaid" tone={fiKpis.totalOutstanding > 0 ? "warn" : "good"} />
-            <KpiCard title="Pending" value={fiKpis.pendingCount} subtitle="Awaiting approval" tone={fiKpis.pendingCount > 0 ? "warn" : "good"} />
-            <KpiCard title="Approved / Paid" value={`${fiKpis.approvedCount} / ${fiKpis.paidCount}`} subtitle="Lifecycle" tone="default" />
-          </KpiGrid>
-          <FinancialIntelligenceView aging={aging} invoices={filteredInvoices} />
-        </>
-      ) : (
-        <>
-          <KpiGrid>
-            <KpiCard title="Branch" value={selectedLocationName} subtitle="Scope" tone="default" />
-            <KpiCard title="Total Revenue" value="UGX 0" subtitle="Service mapped" tone="accent" />
-            <KpiCard title="Total Expenses" value="UGX 0" subtitle="Service mapped" tone="warn" />
-            <KpiCard title="Net Profit" value="UGX 0" subtitle="Service mapped" tone="good" />
-          </KpiGrid>
-          <Card title={config.label} subtitle="Structured shell aligned to role matrix" noPadding>
-            <DataTable<CeoMockRow>
-              data={filteredMockRows}
-              columns={[
-                { header: "Name", accessor: "name", className: "font-bold" },
-                { header: "Status", accessor: "status" },
-                { header: "Metric", accessor: "metric", className: "text-right font-mono font-black text-[var(--text-primary)]" },
-                { header: "Owner", accessor: "owner" },
-                { header: "Branch", accessor: () => selectedLocationName, className: "font-bold text-[var(--text-primary)]" },
-              ]}
-              emptyMessage="No rows match your search"
-            />
-          </Card>
-        </>
-      )}
+          {tab === "financial-intelligence" ? (
+            <>
+              <KpiGrid className="lg:grid-cols-5">
+                <KpiCard title="Branch" value={selectedLocationName} subtitle="Scope" tone="default" />
+                <KpiCard title="Total AP" value={`UGX ${fiKpis.totalAp.toLocaleString()}`} subtitle="Register" tone="accent" />
+                <KpiCard title="Outstanding" value={`UGX ${fiKpis.totalOutstanding.toLocaleString()}`} subtitle="Unpaid" tone={fiKpis.totalOutstanding > 0 ? "warn" : "good"} />
+                <KpiCard title="Pending" value={fiKpis.pendingCount} subtitle="Awaiting approval" tone={fiKpis.pendingCount > 0 ? "warn" : "good"} />
+                <KpiCard title="Approved / Paid" value={`${fiKpis.approvedCount} / ${fiKpis.paidCount}`} subtitle="Lifecycle" tone="default" />
+              </KpiGrid>
+              <FinancialIntelligenceView aging={aging} invoices={filteredInvoices} />
+            </>
+          ) : (
+            <>
+              <KpiGrid>
+                <KpiCard title="Branch" value={selectedLocationName} subtitle="Scope" tone="default" />
+                <KpiCard title="Total Revenue" value="UGX 0" subtitle="Service mapped" tone="accent" />
+                <KpiCard title="Total Expenses" value="UGX 0" subtitle="Service mapped" tone="warn" />
+                <KpiCard title="Net Profit" value="UGX 0" subtitle="Service mapped" tone="good" />
+              </KpiGrid>
+              <Card title={config.label} subtitle="Structured shell aligned to role matrix" noPadding>
+                <DataTable<CeoMockRow>
+                  data={filteredMockRows}
+                  columns={[
+                    { header: "Name", accessor: "name", className: "font-bold" },
+                    { header: "Status", accessor: "status" },
+                    { header: "Metric", accessor: "metric", className: "text-right font-mono font-black text-[var(--text-primary)]" },
+                    { header: "Owner", accessor: "owner" },
+                    { header: "Branch", accessor: () => selectedLocationName, className: "font-bold text-[var(--text-primary)]" },
+                  ]}
+                  emptyMessage="No rows match your search"
+                />
+              </Card>
+            </>
+          )}
         </>
       )}
     </div>

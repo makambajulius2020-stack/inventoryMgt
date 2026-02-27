@@ -3,6 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import {
     Menu,
     Bell,
@@ -93,7 +94,13 @@ export function Header({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
                     </button>
                 )}
                 <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-[var(--accent-hover)]" />
+                    {portal === "gm" ? (
+                        <div className="w-5 h-5 rounded-md overflow-hidden border border-white/10 bg-black/10">
+                            <Image src="/Patiobella-logo.jpeg" alt="Patiobella" width={20} height={20} className="w-full h-full object-cover" />
+                        </div>
+                    ) : (
+                        <Globe className="w-4 h-4 text-[var(--accent-hover)]" />
+                    )}
                     <span className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">
                         {locationLabel}
                     </span>

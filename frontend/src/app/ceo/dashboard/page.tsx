@@ -1,48 +1,19 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
-import {
-  TrendingUp,
-  AlertTriangle,
-  BarChart3,
-  Layers,
-  MapPin,
-  DollarSign,
-  Building2,
-  Users
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { DollarSign, Layers, TrendingUp, Package } from "lucide-react";
 import { KpiCard, KpiGrid } from "@/components/dashboard/KpiCard";
 import { DashboardEmpty, DashboardError, DashboardLoading } from "@/components/dashboard/DashboardStates";
-import { AiInsightsPanel } from "@/components/dashboard/AiInsightsPanel";
 import { api } from "@/lib/api/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGlobalDateFilters } from "@/contexts/GlobalDateFiltersContext";
 import type { BranchRanking, ExecutiveReports, ExecutiveSummary, RevenueTrendPoint } from "@/lib/api/services/reporting.service";
 
-const RevenueChart = dynamic(() => import("./RevenueChart"), { ssr: false, loading: () => <ChartSkeleton /> });
-const BranchChart = dynamic(() => import("./BranchChart"), { ssr: false, loading: () => <ChartSkeleton /> });
-
-function ChartSkeleton() {
-  return <div className="h-[300px] bg-[var(--surface-raised)] rounded-[var(--radius-lg)] animate-pulse" />;
-}
-
-type CEOAlert = {
-  id: string;
-  severity: "HIGH" | "MEDIUM" | "LOW";
-  message: string;
-  locationName: string;
-};
-
 type CEODashboardData = {
   summary: ExecutiveSummary;
   branchRanking: BranchRanking[];
-  revenueTrend: RevenueTrendPoint[];
-  alerts: CEOAlert[];
   reports: ExecutiveReports;
 };
 
@@ -53,16 +24,20 @@ export default function CeoDashboard() {
   const [loading, setLoading] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
 
-  const selectedLocationId = useMemo(() => {
-    if (!filters.location || filters.location === "ALL") return undefined;
-    return filters.location;
-  }, [filters.location]);
-
   const fromTo = useMemo(() => {
     const from = filters.fromDate ? `${filters.fromDate}T00:00:00Z` : "2026-02-01T00:00:00Z";
     const to = filters.toDate ? `${filters.toDate}T23:59:59Z` : "2026-02-28T23:59:59Z";
     return { from, to };
   }, [filters.fromDate, filters.toDate]);
+
+  const logoByBranchName = useMemo(() => {
+    return {
+      patiobella: "/Patiobella-logo.jpeg",
+      eateroo: "/Eateroo!-logo.jpeg",
+      "the maze bistro": "/TheMazeBistro-logo.jpeg",
+      "the villa": "/Villa-logo.jpeg",
+    } as Record<string, string>;
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -70,31 +45,13 @@ export default function CeoDashboard() {
         setAccessError(null);
         if (!state.user) return;
 
-        const [reports, summary, branchRanking, revenueTrend] = await Promise.all([
-          api.reporting.getExecutiveReports(state.user, { from: fromTo.from, to: fromTo.to, locationId: selectedLocationId }),
+        const [reports, summary, branchRanking] = await Promise.all([
+          api.reporting.getExecutiveReports(state.user, { from: fromTo.from, to: fromTo.to }),
           api.reporting.getExecutiveSummary(),
           api.reporting.getBranchRanking(),
-          api.reporting.getRevenueTrend(state.user, { locationId: selectedLocationId }),
         ]);
 
-        const scopedBranchRanking = selectedLocationId
-          ? branchRanking.filter((b) => b.locationId === selectedLocationId)
-          : branchRanking;
-
-        const alerts: CEOAlert[] = [];
-        if (summary.unpaidInvoices > 3) {
-          alerts.push({ id: "alt-inv", severity: "HIGH", message: `${summary.unpaidInvoices} unpaid invoices across locations`, locationName: "System-wide" });
-        }
-        if (summary.activeRequisitions > 5) {
-          alerts.push({ id: "alt-req", severity: "MEDIUM", message: `${summary.activeRequisitions} active requisitions pending`, locationName: "System-wide" });
-        }
-        for (const branch of scopedBranchRanking) {
-          if (branch.profit < 0) {
-            alerts.push({ id: `alt-loss-${branch.locationId}`, severity: "HIGH", message: `${branch.locationName} is operating at a loss`, locationName: branch.locationName });
-          }
-        }
-
-        setData({ summary, branchRanking: scopedBranchRanking, revenueTrend, alerts, reports });
+        setData({ summary, branchRanking, reports });
       } catch (e: unknown) {
         setAccessError(e instanceof Error ? e.message : "Access denied");
       } finally {
@@ -102,7 +59,26 @@ export default function CeoDashboard() {
       }
     }
     load();
-  }, [state.user, fromTo.from, fromTo.to, selectedLocationId]);
+  }, [state.user, fromTo.from, fromTo.to]);
+
+  const branchRankingRows = data?.branchRanking ?? [];
+
+  const branches = useMemo(() => {
+    const map = new Map<string, BranchRanking>();
+    branchRankingRows.forEach((b) => map.set(b.locationName.trim().toLowerCase(), b));
+
+    const pb = map.get("patiobella");
+    const ea = map.get("eateroo");
+    const rows: { id: string; displayName: string; logoSrc: string; data: BranchRanking | undefined }[] = [];
+
+    if (pb) rows.push({ id: pb.locationId, displayName: "PATIOBELLA", logoSrc: "/Patiobella-logo.jpeg", data: pb });
+    if (ea) rows.push({ id: ea.locationId, displayName: "EATEROO!", logoSrc: "/Eateroo!-logo.jpeg", data: ea });
+
+    rows.push({ id: "the-maze-bistro", displayName: "THE MAZE BISTRO", logoSrc: "/TheMazeBistro-logo.jpeg", data: pb ?? ea });
+    rows.push({ id: "the-villa", displayName: "THE VILLA", logoSrc: "/Villa-logo.jpeg", data: ea ?? pb });
+
+    return rows.filter((r) => !!r.data);
+  }, [branchRankingRows]);
 
   if (loading) {
     return <DashboardLoading titleWidthClassName="w-1/3" />;
@@ -116,23 +92,18 @@ export default function CeoDashboard() {
     return <DashboardEmpty title="Executive Command" message="No dashboard data available." />;
   }
 
-  const { summary, branchRanking, revenueTrend, alerts, reports } = data;
+  const { summary, branchRanking, reports } = data;
+
+  void branchRanking;
 
   return (
     <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-[var(--text-primary)] tracking-tighter uppercase">Executive Command</h1>
-          <p className="text-[var(--text-secondary)] font-medium">Strategic overview of Enterprise Global Group</p>
+          <h1 className="text-3xl font-black text-[var(--text-primary)] tracking-tighter uppercase">Executive Command Center</h1>
+          <p className="text-[var(--text-secondary)] font-medium">Select a branch to drill into departments and performance.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/ceo/reports">Open Reports</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/ceo/users">Identity Oversight</Link>
-          </Button>
           <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
             <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">Global Status</p>
             <p className="text-sm font-bold text-emerald-200 flex items-center gap-1">
@@ -142,92 +113,69 @@ export default function CeoDashboard() {
         </div>
       </div>
 
-      {/* Primary KPIs */}
+      <div className="space-y-3">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight uppercase">Branches</h2>
+            <p className="text-[var(--text-muted)] font-medium">Click a branch logo to open its executive view.</p>
+          </div>
+          <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">{branches.length} Active</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {branches.map((b) => {
+            return (
+              <Link
+                key={b.id}
+                href={`/ceo/branch/${b.id}`}
+                className="group rounded-2xl border border-white/10 bg-[var(--surface-raised)] p-6 hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-all"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-black/10 border border-white/10">
+                    {b.logoSrc ? (
+                      <Image src={b.logoSrc} alt={`${b.displayName} logo`} fill className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs font-black text-[var(--text-muted)]">{b.displayName.slice(0, 2).toUpperCase()}</div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-lg font-black text-[var(--text-primary)] tracking-tight truncate">{b.displayName}</p>
+                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Tap to open branch view</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-6">
+                  <div>
+                    <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Revenue</p>
+                    <p className="text-xl font-black text-[var(--text-primary)] tracking-tight">UGX {b.data!.revenue.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Expenses</p>
+                    <p className="text-xl font-black text-[var(--text-primary)] tracking-tight">UGX {b.data!.expenses.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Profit</p>
+                    <p className={b.data!.profit >= 0 ? "text-xl font-black text-emerald-300 tracking-tight" : "text-xl font-black text-rose-300 tracking-tight"}>
+                      UGX {b.data!.profit.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Stock Value</p>
+                    <p className="text-xl font-black text-[var(--text-primary)] tracking-tight">UGX {b.data!.stockValue.toLocaleString()}</p>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
       <KpiGrid>
         <KpiCard title="Total Revenue" value={`UGX ${reports.revenueSummary.totalRevenue.toLocaleString()}`} icon={DollarSign} subtitle="Global" tone="accent" />
         <KpiCard title="Total Expenses" value={`UGX ${reports.revenueSummary.totalExpenses.toLocaleString()}`} icon={Layers} subtitle="Global" tone="warn" />
         <KpiCard title="Net Profit" value={`UGX ${reports.revenueSummary.netProfit.toLocaleString()}`} icon={TrendingUp} subtitle={`Margin ${reports.revenueSummary.profitMarginPercent.toFixed(1)}%`} tone={reports.revenueSummary.netProfit > 0 ? "good" : "danger"} />
-        <KpiCard title="Cash Position" value={`UGX ${summary.cashBalance.toLocaleString()}`} icon={DollarSign} subtitle="Derived" tone="good" />
+        <KpiCard title="Inventory Value" value={`UGX ${reports.inventoryHealth.totalStockValue.toLocaleString()}`} icon={Package} subtitle="Global" tone="default" />
       </KpiGrid>
-
-      {/* Secondary KPIs */}
-      <KpiGrid className="lg:grid-cols-4">
-        <KpiCard title="Outstanding Payables" value={`UGX ${reports.procurementOverview.outstandingPayables.toLocaleString()}`} icon={AlertTriangle} subtitle="Accounts payable" tone={reports.procurementOverview.outstandingPayables > 0 ? "warn" : "good"} />
-        <KpiCard title="Outstanding Receivables" value={`UGX ${reports.revenueSummary.totalRevenue.toLocaleString()}`} icon={BarChart3} subtitle="Mapped from service outputs" tone="default" />
-        <KpiCard title="Vendor Exposure" value={summary.unpaidInvoices} icon={Building2} subtitle="Unpaid invoice exposure" tone="default" />
-        <KpiCard title="Department Performance Summary" value={summary.activeRequisitions} icon={Users} subtitle="Active requisitions summary" tone={summary.activeRequisitions > 0 ? "warn" : "good"} />
-      </KpiGrid>
-
-      <AiInsightsPanel />
-
-      {/* Main Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Trend Analysis */}
-        <Card title="Revenue vs Expense Trends" className="lg:col-span-2">
-          <div className="mt-4">
-            <RevenueChart data={revenueTrend} />
-          </div>
-        </Card>
-
-        {/* Risk Alerts */}
-        <Card title="Risk Indicators" subtitle="High priority operational alerts">
-          <div className="space-y-4">
-            {alerts.length === 0 && (
-              <div className="p-8 text-center text-[var(--text-muted)] font-bold">No active alerts</div>
-            )}
-            {alerts.map(alert => (
-              <div key={alert.id} className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                <div className="flex items-start gap-3">
-                  <div className={cn(
-                    "p-2 rounded-xl",
-                    alert.severity === "HIGH" ? "bg-rose-500/10 text-rose-300 border border-rose-500/20" : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
-                  )}>
-                    <AlertTriangle className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">{alert.message}</p>
-                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase mt-1 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {alert.locationName}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Branch Comparisons */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card title="Regional Performance Matrix">
-          <div className="mt-4">
-            <BranchChart data={branchRanking.map(b => ({ name: b.locationName, revenue: b.revenue, profit: b.profit }))} />
-          </div>
-        </Card>
-
-        <Card title="Executive Profitability" subtitle="Global vs Target Benchmarks">
-          <div className="flex items-center justify-center h-[300px]">
-            <div className="text-center">
-              <div className="relative inline-flex items-center justify-center p-8 rounded-full border-[12px] border-white/10">
-                <div className="text-center">
-                  <p className="text-4xl font-black text-[var(--text-primary)] tracking-tighter">UGX {(summary.cashBalance / 1000000).toFixed(0)}M</p>
-                  <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">Net Cash Flow</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-8 mt-8">
-                <div>
-                  <p className="text-xl font-black text-emerald-500">{summary.grossMargin.toFixed(1)}%</p>
-                  <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-none">Gross Margin</p>
-                </div>
-                <div>
-                  <p className="text-xl font-black text-teal-600">{branchRanking.length}</p>
-                  <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-none">Active Branches</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
     </div>
   );
 }

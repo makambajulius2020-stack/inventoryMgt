@@ -24,14 +24,10 @@ type NavItem = { label: string; href: string; icon: React.ComponentType<{ classN
 
 const NAV_ITEMS: Partial<Record<RoleName, NavItem[]>> = {
     CEO: [
-        { label: "Executive Overview", href: "/ceo/dashboard", icon: LayoutDashboard },
+        { label: "Dashboard", href: "/ceo/dashboard", icon: LayoutDashboard },
         { label: "Financial Intelligence", href: "/ceo/financial-intelligence", icon: DollarSign },
-        { label: "Operational Overview", href: "/ceo/operational-overview", icon: Layers },
-        { label: "Procurement Overview", href: "/ceo/procurement-overview", icon: ShoppingCart },
-        { label: "Inventory Status", href: "/ceo/inventory-status", icon: Package },
-        { label: "Sales Analytics", href: "/ceo/sales-analytics", icon: DollarSign },
-        { label: "Audit & Controls", href: "/ceo/audit-controls", icon: ShieldCheck },
-        { label: "Reports & Exports", href: "/ceo/reports", icon: Layers },
+        { label: "System Overview", href: "/ceo/operational-overview", icon: Layers },
+        { label: "Reports", href: "/ceo/reports", icon: Layers },
     ],
     SYSTEM_AUDITOR: [
         { label: "System Logs", href: "/auditor/dashboard", icon: ShieldCheck },
